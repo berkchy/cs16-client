@@ -95,6 +95,8 @@ int CHudScoreboard :: Init( void )
 	// Hook messages & commands here
 	HOOK_COMMAND( gHUD.m_Scoreboard, "+showscores", ShowScores );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "-showscores", HideScores );
+	HOOK_COMMAND( gHUD.m_Scoreboard, "scoreboard", ToggleScoreboard );
+	HOOK_COMMAND( gHUD.m_Scoreboard, "scoreboard2", ToggleScoreboard );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "showscoreboard2", ShowScoreboard2 );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "hidescoreboard2", HideScoreboard2 );
 
@@ -107,6 +109,13 @@ int CHudScoreboard :: Init( void )
 	cl_showpacketloss = CVAR_CREATE( "cl_showpacketloss", "0", FCVAR_ARCHIVE );
 	cl_showplayerversion = CVAR_CREATE( "cl_showplayerversion", "0", 0 );
 	cl_show_scoreboard_on_death = CVAR_CREATE( "cl_show_scoreboard_on_death", "0", FCVAR_ARCHIVE );
+	cl_scoreboard_style = CVAR_CREATE( "cl_scoreboard_style", "2", FCVAR_ARCHIVE );
+	cl_scoreboard_alpha = CVAR_CREATE( "cl_scoreboard_alpha", "235", FCVAR_ARCHIVE );
+	cl_scoreboard_show_money = CVAR_CREATE( "cl_scoreboard_show_money", "1", FCVAR_ARCHIVE );
+	cl_scoreboard_show_hp = CVAR_CREATE( "cl_scoreboard_show_hp", "1", FCVAR_ARCHIVE );
+	cl_scoreboard_show_ping = CVAR_CREATE( "cl_scoreboard_show_ping", "1", FCVAR_ARCHIVE );
+	cl_scoreboard_show_flags = CVAR_CREATE( "cl_scoreboard_show_flags", "1", FCVAR_ARCHIVE );
+	cl_scoreboard_high_contrast = CVAR_CREATE( "cl_scoreboard_high_contrast", "0", FCVAR_ARCHIVE );
 
 	return 1;
 }
@@ -189,6 +198,9 @@ int CHudScoreboard :: Draw( float flTime )
 
 int CHudScoreboard :: DrawScoreboard( float fTime )
 {
+	if( cl_scoreboard_style && cl_scoreboard_style->value >= 1.5f )
+		return DrawScoreboard2( fTime );
+
 	GetAllPlayersInfo();
 	char ServerName[90];
 
@@ -742,24 +754,32 @@ void CHudScoreboard :: UserCmd_HideScores( void )
 
 void CHudScoreboard	:: UserCmd_ShowScoreboard2()
 {
-	if( gEngfuncs.Cmd_Argc() != 9 )
+	m_bForceDraw = false;
+
+	if( gEngfuncs.Cmd_Argc() >= 9 )
 	{
-		ConsolePrint("showscoreboard2 <xstart> <xend> <ystart> <yend> <r> <g> <b> <a>");
+		xstart     = atof(gEngfuncs.Cmd_Argv(1)) * ScreenWidth;
+		xend       = atof(gEngfuncs.Cmd_Argv(2)) * ScreenWidth;
+		ystart     = atof(gEngfuncs.Cmd_Argv(3)) * ScreenHeight;
+		yend       = atof(gEngfuncs.Cmd_Argv(4)) * ScreenHeight;
+		m_colors.r = atoi(gEngfuncs.Cmd_Argv(5));
+		m_colors.g = atoi(gEngfuncs.Cmd_Argv(6));
+		m_colors.b = atoi(gEngfuncs.Cmd_Argv(7));
+		m_colors.a = atoi(gEngfuncs.Cmd_Argv(8));
+		m_bDrawStroke = false;
+		m_bForceDraw = true;
 	}
 
-	xstart     = atof(gEngfuncs.Cmd_Argv(1)) * ScreenWidth;
-	xend       = atof(gEngfuncs.Cmd_Argv(2)) * ScreenWidth;
-	ystart     = atof(gEngfuncs.Cmd_Argv(3)) * ScreenHeight;
-	yend       = atof(gEngfuncs.Cmd_Argv(4)) * ScreenHeight;
-	m_colors.r = atoi(gEngfuncs.Cmd_Argv(5));
-	m_colors.b = atoi(gEngfuncs.Cmd_Argv(6));
-	m_colors.b = atoi(gEngfuncs.Cmd_Argv(7));
-	m_colors.a = atoi(gEngfuncs.Cmd_Argv(8));
-	m_bDrawStroke = false;
-	m_bForceDraw = true;
+	m_bShowscoresHeld = true;
 }
 
 void CHudScoreboard :: UserCmd_HideScoreboard2()
 {
 	m_bForceDraw = m_bShowscoresHeld = false; // and disable it
+}
+
+void CHudScoreboard :: UserCmd_ToggleScoreboard()
+{
+	m_bForceDraw = false;
+	m_bShowscoresHeld = !m_bShowscoresHeld;
 }

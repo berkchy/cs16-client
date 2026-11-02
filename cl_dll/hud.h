@@ -368,6 +368,7 @@ public:
 	int Draw( float flTime );
 
 	int DrawScoreboard( float flTime );
+	int DrawScoreboard2( float flTime );
 	int DrawTeams( float listslot );
 	int DrawPlayers( float listslot, int nameoffset = 0, const char *team = NULL ); // returns the ypos where it finishes drawing
 
@@ -381,6 +382,7 @@ public:
 	CHudUserCmd(HideScores);
 	CHudUserCmd(ShowScoreboard2);
 	CHudUserCmd(HideScoreboard2);
+	CHudUserCmd(ToggleScoreboard);
 
 	CHudMsgFunc(ScoreInfo);
 	CHudMsgFunc(TeamInfo);
@@ -401,6 +403,13 @@ private:
 	cvar_t *cl_showpacketloss;
 	cvar_t *cl_showplayerversion;
 	cvar_t *cl_show_scoreboard_on_death;
+	cvar_t *cl_scoreboard_style;
+	cvar_t *cl_scoreboard_alpha;
+	cvar_t *cl_scoreboard_show_money;
+	cvar_t *cl_scoreboard_show_hp;
+	cvar_t *cl_scoreboard_show_ping;
+	cvar_t *cl_scoreboard_show_flags;
+	cvar_t *cl_scoreboard_high_contrast;
 };
 
 //
