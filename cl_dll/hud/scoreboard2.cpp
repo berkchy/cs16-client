@@ -17,6 +17,7 @@
 #include "cdll_dll.h"
 
 extern int xstart, xend, ystart, yend;
+extern float g_flScoreboardFade;
 
 namespace
 {
@@ -88,6 +89,14 @@ int SbClamp( int value, int low, int high )
 	return value;
 }
 
+int SbFade( int value )
+{
+	float fade = g_flScoreboardFade;
+	if( fade < 0.0f ) fade = 0.0f;
+	if( fade > 1.0f ) fade = 1.0f;
+	return (int)( value * fade + 0.5f );
+}
+
 int SbTextWidth( const char *text )
 {
 	if( !text || !text[0] )
@@ -109,11 +118,14 @@ int SbTextHeight()
 
 void SbColor( int r, int g, int b )
 {
-	gEngfuncs.pfnDrawSetTextColor( r / 255.0f, g / 255.0f, b / 255.0f );
+	gEngfuncs.pfnDrawSetTextColor( SbFade( r ) / 255.0f, SbFade( g ) / 255.0f, SbFade( b ) / 255.0f );
 }
 
 void SbText( int x, int y, const char *text )
 {
+	if( g_flScoreboardFade <= 0.001f )
+		return;
+
 	if( text && text[0] )
 		gEngfuncs.pfnDrawConsoleString( x, y, (char *)text );
 }
@@ -154,7 +166,7 @@ void SbTextClipped( int x, int y, int maxWidth, const char *text )
 void SbFill( int x, int y, int width, int height, int r, int g, int b, int a )
 {
 	if( width > 0 && height > 0 )
-		FillRGBABlend( x, y, width, height, r, g, b, a );
+		FillRGBABlend( x, y, width, height, r, g, b, SbFade( a ) );
 }
 
 void SbPanel( int x, int y, int width, int height, int r, int g, int b, int a )
@@ -162,12 +174,12 @@ void SbPanel( int x, int y, int width, int height, int r, int g, int b, int a )
 	if( width <= 0 || height <= 0 )
 		return;
 
-	FillRGBABlend( x, y, width, height, r, g, b, a );
-	FillRGBABlend( x, y, width, height / 3, 255, 255, 255, 3 );
-	FillRGBA( x, y, width, 1, 255, 255, 255, 26 );
-	FillRGBA( x, y + height - 1, width, 1, 0, 0, 0, 90 );
-	FillRGBA( x, y, 1, height, 255, 255, 255, 14 );
-	FillRGBA( x + width - 1, y, 1, height, 255, 255, 255, 14 );
+	FillRGBABlend( x, y, width, height, r, g, b, SbFade( a ) );
+	FillRGBABlend( x, y, width, height / 3, 255, 255, 255, SbFade( 3 ) );
+	FillRGBA( x, y, width, 1, 255, 255, 255, SbFade( 26 ) );
+	FillRGBA( x, y + height - 1, width, 1, 0, 0, 0, SbFade( 90 ) );
+	FillRGBA( x, y, 1, height, 255, 255, 255, SbFade( 14 ) );
+	FillRGBA( x + width - 1, y, 1, height, 255, 255, 255, SbFade( 14 ) );
 }
 
 void SbTeamColor( int team, int &r, int &g, int &b )
@@ -373,7 +385,7 @@ void SbDrawColumnHeaders( const SbColumns &columns, int y, int width, int r, int
 	if( columns.showPing )
 		SbTextRight( columns.pingRight - 4, y, "PING" );
 
-	FillRGBA( columns.nameX - 2, y + SbTextHeight() + 2, width, 1, 255, 255, 255, 18 );
+	FillRGBA( columns.nameX - 2, y + SbTextHeight() + 2, width, 1, 255, 255, 255, SbFade( 18 ) );
 }
 
 int SbDrawPlayerRows(
@@ -443,7 +455,7 @@ int SbDrawPlayerRows(
 		{
 			int tr, tg, tb;
 			SbTeamColor( player.team, tr, tg, tb );
-			FillRGBABlend( x, rowY, width, cellHeight, tr, tg, tb, 18 );
+			FillRGBABlend( x, rowY, width, cellHeight, tr, tg, tb, SbFade( 18 ) );
 		}
 
 		int r = 232, g = 234, b = 236;
@@ -542,13 +554,16 @@ void SbDrawTeam(
 	float scoreScale = width < 600 ? 1.0f : 1.35f;
 	int scoreWidth = DrawUtils::HudStringLen( scoreBuffer, scoreScale );
 	int scoreHeight = (int)( SbTextHeight() * scoreScale );
-	int scoreY = y + ( height - scoreHeight ) / 2;
+	int scoreTop = y + SbTextHeight() + 6;
+	int scoreY = scoreTop + ( ( y + height ) - scoreTop - scoreHeight ) / 2;
+	if( scoreY < scoreTop )
+		scoreY = scoreTop;
 	DrawUtils::DrawHudString(
 		x + ( infoWidth - scoreWidth ) / 2,
 		scoreY,
 		x + infoWidth - 2,
 		scoreBuffer,
-		238, 239, 240,
+		SbFade( 238 ), SbFade( 239 ), SbFade( 240 ),
 		scoreScale );
 
 	SbDrawPlayerRows(
@@ -684,6 +699,12 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 		rowHeight = SbClamp( ( maxPanelHeight - fixedHeight ) / ( rowCount > 0 ? rowCount : 1 ), 14, 26 );
 		ctHeight = ( ctTeam.players > 0 ? ctTeam.players : 1 ) * rowHeight + 10;
 		tHeight = ( tTeam.players > 0 ? tTeam.players : 1 ) * rowHeight + 10;
+
+		int infoMinHeight = SbTextHeight() + 6 + (int)( SbTextHeight() * 1.35f ) + 8;
+		if( ctHeight < infoMinHeight )
+			ctHeight = infoMinHeight;
+		if( tHeight < infoMinHeight )
+			tHeight = infoMinHeight;
 	}
 	else
 	{
@@ -740,9 +761,9 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	int panelBottom = panelY + panelHeight;
 
 	SbFill( 0, 0, screenWidth, screenHeight, 0, 0, 0, config.highContrast ? 170 : 110 );
-	FillRGBABlend( panelX, panelY, panelWidth, panelHeight, 0, 0, 0, config.alpha );
-	FillRGBA( panelX, panelY, panelWidth, 1, 255, 255, 255, 16 );
-	FillRGBA( panelX, panelBottom - 1, panelWidth, 1, 0, 0, 0, 140 );
+	SbFill( panelX, panelY, panelWidth, panelHeight, 0, 0, 0, config.alpha );
+	SbFill( panelX, panelY, panelWidth, 1, 255, 255, 255, 16 );
+	SbFill( panelX, panelBottom - 1, panelWidth, 1, 0, 0, 0, 140 );
 
 	int mutedR = config.highContrast ? 210 : 150;
 	int mutedG = config.highContrast ? 212 : 154;
@@ -757,7 +778,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	SbColor( mutedR, mutedG, mutedB );
 	SbTextRight( panelRight - padding, panelY + 9, countBuffer );
 
-	FillRGBA( panelX + padding, panelY + 27, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
+	SbFill( panelX + padding, panelY + 27, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
 
 	int contentTop = panelY + headerHeight;
 	int footerY = panelBottom - footerHeight + 2;

@@ -410,6 +410,8 @@ private:
 	cvar_t *cl_scoreboard_show_ping;
 	cvar_t *cl_scoreboard_show_flags;
 	cvar_t *cl_scoreboard_high_contrast;
+	cvar_t *cl_scoreboard_fadein;
+	cvar_t *cl_scoreboard_fadeout;
 };
 
 //

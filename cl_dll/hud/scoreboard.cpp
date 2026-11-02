@@ -30,6 +30,9 @@
 #include "vgui_parser.h"
 #include "eventscripts.h"
 
+float g_flScoreboardFade = 1.0f;
+static float s_flScoreboardLastTime = -1.0f;
+
 hud_player_info_t   g_PlayerInfoList[MAX_PLAYERS+1]; // player info from the engine
 extra_player_info_t	g_PlayerExtraInfo[MAX_PLAYERS+1]; // additional player info sent directly to the client dll
 team_info_t         g_TeamInfo[MAX_TEAMS+1];
@@ -116,6 +119,8 @@ int CHudScoreboard :: Init( void )
 	cl_scoreboard_show_ping = CVAR_CREATE( "cl_scoreboard_show_ping", "1", FCVAR_ARCHIVE );
 	cl_scoreboard_show_flags = CVAR_CREATE( "cl_scoreboard_show_flags", "1", FCVAR_ARCHIVE );
 	cl_scoreboard_high_contrast = CVAR_CREATE( "cl_scoreboard_high_contrast", "0", FCVAR_ARCHIVE );
+	cl_scoreboard_fadein = CVAR_CREATE( "cl_scoreboard_fadein", "0.15", FCVAR_ARCHIVE );
+	cl_scoreboard_fadeout = CVAR_CREATE( "cl_scoreboard_fadeout", "0.18", FCVAR_ARCHIVE );
 
 	return 1;
 }
@@ -177,8 +182,39 @@ bool CHudScoreboard :: ShouldDrawScoreboard() const
 
 int CHudScoreboard :: Draw( float flTime )
 {
-	if( !ShouldDrawScoreboard( ))
-		return 1;
+	bool shouldDraw = ShouldDrawScoreboard();
+
+	float fadeIn = cl_scoreboard_fadein ? cl_scoreboard_fadein->value : 0.15f;
+	float fadeOut = cl_scoreboard_fadeout ? cl_scoreboard_fadeout->value : 0.18f;
+	if( fadeIn < 0.0f ) fadeIn = 0.0f;
+	if( fadeOut < 0.0f ) fadeOut = 0.0f;
+
+	float delta = s_flScoreboardLastTime >= 0.0f ? flTime - s_flScoreboardLastTime : 0.0f;
+	s_flScoreboardLastTime = flTime;
+	if( delta < 0.0f || delta > 0.5f )
+		delta = 0.0f;
+
+	if( shouldDraw )
+	{
+		if( fadeIn <= 0.001f )
+			g_flScoreboardFade = 1.0f;
+		else
+			g_flScoreboardFade += delta / fadeIn;
+		if( g_flScoreboardFade > 1.0f )
+			g_flScoreboardFade = 1.0f;
+	}
+	else
+	{
+		if( fadeOut <= 0.001f )
+			g_flScoreboardFade = 0.0f;
+		else
+			g_flScoreboardFade -= delta / fadeOut;
+		if( g_flScoreboardFade <= 0.0f )
+		{
+			g_flScoreboardFade = 0.0f;
+			return 1;
+		}
+	}
 
 	if( !m_bForceDraw )
 	{
