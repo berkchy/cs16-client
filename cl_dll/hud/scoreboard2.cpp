@@ -539,9 +539,10 @@ void SbDrawTeam(
 
 	char scoreBuffer[24];
 	snprintf( scoreBuffer, sizeof( scoreBuffer ), "%d", team.frags );
-	float scoreScale = width < 600 ? 1.8f : 2.4f;
+	float scoreScale = width < 600 ? 1.0f : 1.35f;
 	int scoreWidth = DrawUtils::HudStringLen( scoreBuffer, scoreScale );
-	int scoreY = y + SbTextHeight() + 6;
+	int scoreHeight = (int)( SbTextHeight() * scoreScale );
+	int scoreY = y + ( height - scoreHeight ) / 2;
 	DrawUtils::DrawHudString(
 		x + ( infoWidth - scoreWidth ) / 2,
 		scoreY,
@@ -680,7 +681,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	{
 		int rowCount = ( ctTeam.players > 0 ? ctTeam.players : 1 ) + ( tTeam.players > 0 ? tTeam.players : 1 );
 		int fixedHeight = headerHeight + labelHeight + footerHeight + padding * 2 + teamGap + spectatorHeight + 16;
-		rowHeight = SbClamp( ( maxPanelHeight - fixedHeight ) / ( rowCount > 0 ? rowCount : 1 ), 13, 20 );
+		rowHeight = SbClamp( ( maxPanelHeight - fixedHeight ) / ( rowCount > 0 ? rowCount : 1 ), 14, 26 );
 		ctHeight = ( ctTeam.players > 0 ? ctTeam.players : 1 ) * rowHeight + 10;
 		tHeight = ( tTeam.players > 0 ? tTeam.players : 1 ) * rowHeight + 10;
 	}
@@ -705,6 +706,14 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 		panelWidth = screenWidth - 16;
 
 	int panelHeight = contentHeight;
+	if( teamMode )
+	{
+		int minTeamPanelHeight = (int)( screenHeight * 0.72f );
+		if( minTeamPanelHeight > maxPanelHeight )
+			minTeamPanelHeight = maxPanelHeight;
+		if( panelHeight < minTeamPanelHeight )
+			panelHeight = minTeamPanelHeight;
+	}
 	if( panelHeight > maxPanelHeight )
 		panelHeight = maxPanelHeight;
 
@@ -764,7 +773,14 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	{
 		SbDrawColumnHeaders( columns, contentTop, tableWidth, mutedR, mutedG, mutedB );
 
-		int ctY = contentTop + labelHeight;
+		int blockTop = contentTop + labelHeight;
+		int blockBottom = panelBottom - footerHeight;
+		int blockHeight = ctHeight + tHeight + teamGap + spectatorHeight;
+		int freeSpace = blockBottom - blockTop - blockHeight;
+		if( freeSpace > 0 )
+			blockTop += freeSpace / 2;
+
+		int ctY = blockTop;
 		SbDrawTeam(
 			ctTeam,
 			panelX + padding,
