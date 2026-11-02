@@ -110,7 +110,7 @@ int CHudScoreboard :: Init( void )
 	cl_showplayerversion = CVAR_CREATE( "cl_showplayerversion", "0", 0 );
 	cl_show_scoreboard_on_death = CVAR_CREATE( "cl_show_scoreboard_on_death", "0", FCVAR_ARCHIVE );
 	cl_scoreboard_style = CVAR_CREATE( "cl_scoreboard_style", "2", FCVAR_ARCHIVE );
-	cl_scoreboard_alpha = CVAR_CREATE( "cl_scoreboard_alpha", "185", FCVAR_ARCHIVE );
+	cl_scoreboard_alpha = CVAR_CREATE( "cl_scoreboard_alpha", "220", FCVAR_ARCHIVE );
 	cl_scoreboard_show_money = CVAR_CREATE( "cl_scoreboard_show_money", "1", FCVAR_ARCHIVE );
 	cl_scoreboard_show_hp = CVAR_CREATE( "cl_scoreboard_show_hp", "1", FCVAR_ARCHIVE );
 	cl_scoreboard_show_ping = CVAR_CREATE( "cl_scoreboard_show_ping", "1", FCVAR_ARCHIVE );

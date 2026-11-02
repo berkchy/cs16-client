@@ -63,21 +63,20 @@ struct SbTeam
 
 struct SbColumns
 {
-	int rankX;
 	int nameX;
 	int nameMax;
+	int pingLeft;
 	int pingRight;
+	int killLeft;
 	int killRight;
+	int deathLeft;
 	int deathRight;
-	int hpRight;
+	int moneyLeft;
 	int moneyRight;
-	int attrRight;
 	bool showPing;
 	bool showKills;
 	bool showDeaths;
-	bool showHp;
 	bool showMoney;
-	bool showFlags;
 };
 
 int SbClamp( int value, int low, int high )
@@ -319,73 +318,62 @@ int SbCollectPlayers( SbPlayer *players, int maxPlayers )
 	return count;
 }
 
-void SbBuildColumns( SbColumns &columns, int x, int width, const SbConfig &config, bool teamPanel )
+void SbBuildColumns( SbColumns &columns, int x, int width, const SbConfig &config )
 {
-	columns.rankX = x + 8;
-	columns.nameX = x + 30;
+	columns.showPing = config.showPing && width >= 170;
+	columns.showKills = width >= 110;
+	columns.showDeaths = width >= 150;
+	columns.showMoney = config.showMoney && width >= 260;
 
-	int right = x + width - 10;
-	columns.showPing = config.showPing && width >= ( teamPanel ? 230 : 280 );
-	columns.showKills = true;
-	columns.showDeaths = width >= ( teamPanel ? 220 : 240 );
-	columns.showHp = config.showHp && width >= ( teamPanel ? 330 : 430 );
-	columns.showMoney = config.showMoney && width >= ( teamPanel ? 390 : 520 );
-	columns.showFlags = config.showFlags && width >= ( teamPanel ? 280 : 360 );
+	const int gap = 2;
+	const int pingWidth = 38;
+	const int deathWidth = 34;
+	const int killWidth = 34;
+	const int moneyWidth = 66;
 
-	int numberWidth = SbTextWidth( "999" );
-	int hpWidth = SbTextWidth( "100" );
-	int moneyWidth = SbTextWidth( "$16000" );
-	int flagWidth = SbTextWidth( "DEAD" );
+	int right = x + width - 2;
 
 	columns.pingRight = right;
+	columns.pingLeft = right - pingWidth;
 	if( columns.showPing )
-		right -= numberWidth + 10;
+		right -= pingWidth + gap;
 
 	columns.deathRight = right;
+	columns.deathLeft = right - deathWidth;
 	if( columns.showDeaths )
-		right -= numberWidth + 10;
+		right -= deathWidth + gap;
 
 	columns.killRight = right;
+	columns.killLeft = right - killWidth;
 	if( columns.showKills )
-		right -= numberWidth + 10;
-
-	columns.hpRight = right;
-	if( columns.showHp )
-		right -= hpWidth + 10;
+		right -= killWidth + gap;
 
 	columns.moneyRight = right;
+	columns.moneyLeft = right - moneyWidth;
 	if( columns.showMoney )
-		right -= moneyWidth + 10;
+		right -= moneyWidth + gap;
 
-	columns.attrRight = right;
-	if( columns.showFlags )
-		right -= flagWidth + 8;
-
+	columns.nameX = x + 6;
 	columns.nameMax = right - columns.nameX - 4;
-	if( columns.nameMax < 36 )
-		columns.nameMax = 36;
+	if( columns.nameMax < 40 )
+		columns.nameMax = 40;
 }
 
 void SbDrawColumnHeaders( const SbColumns &columns, int y, int width, int r, int g, int b )
 {
-	FillRGBABlend( columns.rankX - 6, y - 3, width, 14, 0, 0, 0, 96 );
-	FillRGBA( columns.rankX - 6, y - 4, width, 1, 255, 255, 255, 16 );
 	SbColor( r, g, b );
-	SbText( columns.rankX, y, "#" );
 	SbText( columns.nameX, y, "PLAYER" );
 
-	if( columns.showKills )
-		SbTextRight( columns.killRight, y, "K" );
-	if( columns.showDeaths )
-		SbTextRight( columns.deathRight, y, "D" );
-	if( columns.showHp )
-		SbTextRight( columns.hpRight, y, "HP" );
 	if( columns.showMoney )
-		SbTextRight( columns.moneyRight, y, "MONEY" );
+		SbTextRight( columns.moneyRight - 4, y, "MONEY" );
+	if( columns.showKills )
+		SbTextRight( columns.killRight - 4, y, "K" );
+	if( columns.showDeaths )
+		SbTextRight( columns.deathRight - 4, y, "D" );
 	if( columns.showPing )
-		SbTextRight( columns.pingRight, y, "PING" );
-	if( columns.showFlags )
-		SbTextRight( columns.attrRight, y, "FLAG" );
+		SbTextRight( columns.pingRight - 4, y, "PING" );
+
+	FillRGBA( columns.nameX - 2, y + SbTextHeight() + 2, width, 1, 255, 255, 255, 18 );
 }
 
 int SbDrawPlayerRows(
@@ -401,11 +389,21 @@ int SbDrawPlayerRows(
 	const SbConfig &config )
 {
 	int drawn = 0;
-	int rank = 0;
 	int hidden = 0;
+	int textHeight = SbTextHeight();
 	SbColumns columns;
 
-	SbBuildColumns( columns, x, width, config, teamFilter == TEAM_CT || teamFilter == TEAM_TERRORIST );
+	SbBuildColumns( columns, x, width, config );
+
+	int nameCellRight = x + width;
+	if( columns.showMoney )
+		nameCellRight = columns.moneyLeft - 2;
+	else if( columns.showKills )
+		nameCellRight = columns.killLeft - 2;
+	else if( columns.showDeaths )
+		nameCellRight = columns.deathLeft - 2;
+	else if( columns.showPing )
+		nameCellRight = columns.pingLeft - 2;
 
 	for( int i = 0; i < count; ++i )
 	{
@@ -421,8 +419,6 @@ int SbDrawPlayerRows(
 			continue;
 		}
 
-		++rank;
-
 		if( drawn >= maxRows )
 		{
 			++hidden;
@@ -430,105 +426,59 @@ int SbDrawPlayerRows(
 		}
 
 		int rowY = y + drawn * rowHeight;
+		int cellHeight = rowHeight - 1;
+		int textY = rowY + ( cellHeight - textHeight ) / 2;
+
+		SbFill( x, rowY, nameCellRight - x, cellHeight, 255, 255, 255, 6 );
+		if( columns.showMoney )
+			SbFill( columns.moneyLeft, rowY, columns.moneyRight - columns.moneyLeft, cellHeight, 255, 255, 255, 5 );
+		if( columns.showKills )
+			SbFill( columns.killLeft, rowY, columns.killRight - columns.killLeft, cellHeight, 255, 255, 255, 5 );
+		if( columns.showDeaths )
+			SbFill( columns.deathLeft, rowY, columns.deathRight - columns.deathLeft, cellHeight, 255, 255, 255, 5 );
+		if( columns.showPing )
+			SbFill( columns.pingLeft, rowY, columns.pingRight - columns.pingLeft, cellHeight, 255, 255, 255, 5 );
 
 		if( player.self )
 		{
-			FillRGBABlend( x, rowY - 1, width, rowHeight, 255, 255, 255, 18 );
-			FillRGBA( x, rowY - 1, 2, rowHeight, 235, 235, 232, 210 );
-		}
-		else if( drawn % 2 == 1 )
-		{
-			FillRGBABlend( x, rowY - 1, width, rowHeight, 255, 255, 255, 6 );
+			int tr, tg, tb;
+			SbTeamColor( player.team, tr, tg, tb );
+			FillRGBABlend( x, rowY, width, cellHeight, tr, tg, tb, 18 );
 		}
 
-		int r = 220, g = 224, b = 228;
-		SbRankColor( rank, showTopRanks, r, g, b );
-		SbColor( r, g, b );
-		char rankBuffer[8];
-		snprintf( rankBuffer, sizeof( rankBuffer ), "%d", rank );
-		SbText( columns.rankX, rowY, rankBuffer );
-
+		int r = 232, g = 234, b = 236;
 		SbPlayerColor( player, r, g, b );
 		if( config.highContrast )
 		{
-			r = player.dead ? 170 : 250;
-			g = player.dead ? 174 : 252;
-			b = player.dead ? 180 : 255;
+			r = player.dead ? 150 : 250;
+			g = player.dead ? 152 : 252;
+			b = player.dead ? 156 : 255;
 		}
 		SbColor( r, g, b );
-		SbTextClipped( columns.nameX, rowY, columns.nameMax, player.name );
-
-		if( columns.showFlags )
-		{
-			const char *flag = NULL;
-			int fr = 170, fg = 176, fb = 184;
-
-			if( config.showVersion )
-			{
-				const char *version = gEngfuncs.PlayerInfo_ValueForKey( player.index, "cscl_ver" );
-				if( version && version[0] )
-				{
-					flag = version;
-					fr = 142; fg = 146; fb = 152;
-				}
-			}
-			else if( player.dead )
-			{
-				flag = "DEAD"; fr = 198; fg = 130; fb = 130;
-			}
-			else if( player.hasC4 )
-			{
-				flag = "BOMB"; fr = 214; fg = 180; fb = 108;
-			}
-			else if( player.vip )
-			{
-				flag = "VIP"; fr = 140; fg = 178; fb = 216;
-			}
-			else if( player.defuse )
-			{
-				flag = "KIT"; fr = 144; fg = 198; fb = 162;
-			}
-
-			if( flag )
-			{
-				SbColor( fr, fg, fb );
-				SbTextRight( columns.attrRight, rowY, flag );
-			}
-		}
-
-		SbColor( r, g, b );
+		SbTextClipped( columns.nameX, textY, columns.nameMax, player.name );
 
 		if( columns.showKills )
 		{
 			char buffer[16];
 			snprintf( buffer, sizeof( buffer ), "%d", player.frags );
-			SbColor( player.dead ? 150 : 238, player.dead ? 154 : 242, player.dead ? 160 : 248 );
-			SbTextRight( columns.killRight, rowY, buffer );
+			SbColor( player.dead ? 140 : 238, player.dead ? 142 : 242, player.dead ? 146 : 248 );
+			SbTextRight( columns.killRight - 4, textY, buffer );
 		}
 
 		if( columns.showDeaths )
 		{
 			char buffer[16];
 			snprintf( buffer, sizeof( buffer ), "%d", player.deaths );
-			SbColor( 170, 176, 184 );
-			SbTextRight( columns.deathRight, rowY, buffer );
-		}
-
-		if( columns.showHp && !player.dead && player.health >= 0 )
-		{
-			char buffer[16];
-			snprintf( buffer, sizeof( buffer ), "%d", player.health );
-			SbHealthColor( player.health, r, g, b );
-			SbColor( r, g, b );
-			SbTextRight( columns.hpRight, rowY, buffer );
+			SbColor( 174, 178, 184 );
+			SbTextRight( columns.deathRight - 4, textY, buffer );
 		}
 
 		if( columns.showMoney && player.money >= 0 )
 		{
 			char buffer[24];
 			snprintf( buffer, sizeof( buffer ), "$%d", player.money );
-			SbColor( 210, 210, 206 );
-			SbTextRight( columns.moneyRight, rowY, buffer );
+			SbColor( 206, 208, 204 );
+			SbTextRight( columns.moneyRight - 4, textY, buffer );
 		}
 
 		if( columns.showPing )
@@ -537,7 +487,7 @@ int SbDrawPlayerRows(
 			if( player.bot )
 			{
 				snprintf( buffer, sizeof( buffer ), "BOT" );
-				SbColor( 150, 156, 164 );
+				SbColor( 146, 150, 156 );
 			}
 			else
 			{
@@ -545,7 +495,7 @@ int SbDrawPlayerRows(
 				SbPingColor( player.ping, false, r, g, b );
 				SbColor( r, g, b );
 			}
-			SbTextRight( columns.pingRight, rowY, buffer );
+			SbTextRight( columns.pingRight - 4, textY, buffer );
 		}
 
 		++drawn;
@@ -556,7 +506,7 @@ int SbDrawPlayerRows(
 		char buffer[48];
 		snprintf( buffer, sizeof( buffer ), "+%d more", hidden );
 		SbColor( 145, 150, 158 );
-		SbText( x + 30, y + drawn * rowHeight, buffer );
+		SbText( x + 6, y + drawn * rowHeight + 4, buffer );
 	}
 
 	return drawn;
@@ -568,6 +518,7 @@ void SbDrawTeam(
 	int y,
 	int width,
 	int height,
+	int rowHeight,
 	const SbPlayer *players,
 	int count,
 	const SbConfig &config )
@@ -578,40 +529,34 @@ void SbDrawTeam(
 	int r, g, b;
 	SbTeamColor( team.number, r, g, b );
 
-	SbPanel( x, y, width, height, 0, 0, 0, config.alpha );
-	FillRGBABlend( x, y, width, 29, r, g, b, 46 );
-	FillRGBA( x, y, width, 2, r, g, b, 224 );
-
+	int infoWidth = width < 460 ? 62 : 88;
 	const char *name = team.number == TEAM_CT
 		? Localize( "#Cstrike_ScoreBoard_CT" )
 		: Localize( "#Cstrike_ScoreBoard_Ter" );
 
 	SbColor( r, g, b );
-	SbTextClipped( x + 12, y + 7, width - 90, name );
+	SbTextClipped( x + 4, y + 2, infoWidth - 8, name );
 
 	char scoreBuffer[24];
 	snprintf( scoreBuffer, sizeof( scoreBuffer ), "%d", team.frags );
-	SbColor( 240, 241, 242 );
-	SbTextRight( x + width - 12, y + 7, scoreBuffer );
+	float scoreScale = width < 600 ? 2.4f : 3.4f;
+	int scoreWidth = DrawUtils::HudStringLen( scoreBuffer, scoreScale );
+	int scoreHeight = (int)( SbTextHeight() * scoreScale );
+	int scoreY = y + ( height - scoreHeight ) / 2;
+	DrawUtils::DrawHudString(
+		x + ( infoWidth - scoreWidth ) / 2,
+		scoreY,
+		x + infoWidth - 2,
+		scoreBuffer,
+		238, 239, 240,
+		scoreScale );
 
-	char subBuffer[80];
-	int averagePing = team.players > 0 ? team.pingSum / team.players : 0;
-	snprintf( subBuffer, sizeof( subBuffer ), "%d PLAYERS  %d ALIVE  %d MS", team.players, team.alive, averagePing );
-	SbColor( 150, 153, 158 );
-	SbTextClipped( x + 12, y + 20, width - 24, subBuffer );
-
-	SbColumns columns;
-	SbBuildColumns( columns, x, width, config, true );
-	SbDrawColumnHeaders( columns, y + 33, width - 8, 148, 150, 154 );
-
-	int headerHeight = 46;
-	int maxRows = ( height - headerHeight - 4 ) / 16;
 	SbDrawPlayerRows(
-		x + 2,
-		y + headerHeight,
-		width - 4,
-		maxRows,
-		16,
+		x + infoWidth,
+		y + 4,
+		width - infoWidth,
+		team.players > 0 ? team.players : 0,
+		rowHeight,
 		players,
 		count,
 		team.number,
@@ -678,59 +623,10 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	config.showFlags = cl_scoreboard_show_flags && cl_scoreboard_show_flags->value != 0.0f;
 	config.showVersion = cl_showplayerversion && cl_showplayerversion->value != 0.0f;
 	config.highContrast = cl_scoreboard_high_contrast && cl_scoreboard_high_contrast->value != 0.0f;
-	config.alpha = cl_scoreboard_alpha ? SbClamp( (int)cl_scoreboard_alpha->value, 120, 220 ) : 185;
+	config.alpha = cl_scoreboard_alpha ? SbClamp( (int)cl_scoreboard_alpha->value, 170, 235 ) : 220;
 
 	int screenWidth = ScreenWidth;
 	int screenHeight = ScreenHeight;
-
-	int x = (int)( screenWidth * 0.035f );
-	int y = (int)( screenHeight * 0.09f );
-	int width = screenWidth - x * 2;
-	int height = screenHeight - y * 2;
-
-	if( m_bForceDraw && xend > xstart && yend > ystart )
-	{
-		x = xstart;
-		y = ystart;
-		width = xend - xstart;
-		height = yend - ystart;
-	}
-
-	if( width < 240 || height < 150 )
-	{
-		x = 8;
-		y = 8;
-		width = screenWidth - 16;
-		height = screenHeight - 16;
-	}
-
-	SbFill( 0, 0, screenWidth, screenHeight, 0, 0, 0, config.highContrast ? 150 : 85 );
-	SbPanel( x, y, width, height, 0, 0, 0, config.alpha );
-	FillRGBA( x, y, width, 1, 255, 255, 255, 42 );
-
-	int textR = 238;
-	int textG = 239;
-	int textB = 240;
-	int mutedR = config.highContrast ? 210 : 154;
-	int mutedG = config.highContrast ? 212 : 157;
-	int mutedB = config.highContrast ? 214 : 162;
-
-	const char *serverName = gHUD.m_szServerName[0] ? gHUD.m_szServerName : "NEXORA";
-	SbColor( textR, textG, textB );
-	SbTextClipped( x + 14, y + 9, width - 130, serverName );
-
-	char countBuffer[48];
-	snprintf( countBuffer, sizeof( countBuffer ), "%d PLAYERS", playerCount );
-	SbColor( mutedR, mutedG, mutedB );
-	SbTextRight( x + width - 14, y + 9, countBuffer );
-
-	SbColor( mutedR, mutedG, mutedB );
-	SbText( x + 14, y + 22, "NEXORA // SCOREBOARD" );
-
-	FillRGBA( x + 14, y + 36, width - 28, 1, 255, 255, 255, 28 );
-
-	int contentTop = y + 46;
-	int footerY = y + height - 18;
 
 	SbTeam ctTeam;
 	SbTeam tTeam;
@@ -766,52 +662,159 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 
 	bool teamMode = gHUD.m_Teamplay != 0 && ( ctTeam.players > 0 || tTeam.players > 0 );
 
+	const int headerHeight = 44;
+	const int labelHeight = SbTextHeight() + 6;
+	const int footerHeight = 20;
+	const int padding = 14;
+	const int teamGap = 8;
+	const int spectatorHeight = otherPlayers > 0 ? SbTextHeight() + 4 : 0;
+
+	int maxPanelHeight = screenHeight - 32;
+	if( maxPanelHeight < 180 )
+		maxPanelHeight = screenHeight - 8;
+
+	int rowHeight;
+	int ctHeight;
+	int tHeight;
+
 	if( teamMode )
 	{
-		int reserve = otherPlayers > 0 ? 24 : 0;
-		int areaBottom = footerY - 4 - reserve;
-		int gap = 10;
-		bool stacked = width < 760;
-
-		if( stacked )
-		{
-			int panelHeight = ( areaBottom - contentTop - gap ) / 2;
-			SbDrawTeam( ctTeam, x + 10, contentTop, width - 20, panelHeight, players, playerCount, config );
-			SbDrawTeam( tTeam, x + 10, contentTop + panelHeight + gap, width - 20, panelHeight, players, playerCount, config );
-		}
-		else
-		{
-			int panelWidth = ( width - 20 - gap ) / 2;
-			SbDrawTeam( ctTeam, x + 10, contentTop, panelWidth, areaBottom - contentTop, players, playerCount, config );
-			SbDrawTeam( tTeam, x + 10 + panelWidth + gap, contentTop, panelWidth, areaBottom - contentTop, players, playerCount, config );
-		}
-
-		if( otherPlayers > 0 )
-			SbDrawSpectators( players, playerCount, x + 14, areaBottom + 6, width - 28, config );
+		int rowCount = ( ctTeam.players > 0 ? ctTeam.players : 1 ) + ( tTeam.players > 0 ? tTeam.players : 1 );
+		int fixedHeight = headerHeight + labelHeight + footerHeight + padding * 2 + teamGap + spectatorHeight + 16;
+		rowHeight = SbClamp( ( maxPanelHeight - fixedHeight ) / ( rowCount > 0 ? rowCount : 1 ), 13, 20 );
+		ctHeight = ( ctTeam.players > 0 ? ctTeam.players : 1 ) * rowHeight + 10;
+		tHeight = ( tTeam.players > 0 ? tTeam.players : 1 ) * rowHeight + 10;
 	}
 	else
 	{
-		SbColumns columns;
-		SbBuildColumns( columns, x + 10, width - 20, config, false );
-		SbDrawColumnHeaders( columns, contentTop, width - 32, mutedR, mutedG, mutedB );
+		int fixedHeight = headerHeight + labelHeight + footerHeight + padding * 2 + spectatorHeight + 8;
+		rowHeight = SbClamp( ( maxPanelHeight - fixedHeight ) / ( playerCount > 0 ? playerCount : 1 ), 13, 20 );
+		ctHeight = 0;
+		tHeight = 0;
+	}
 
-		int headerHeight = 22;
-		int maxRows = ( footerY - contentTop - headerHeight - 4 ) / 17;
+	int contentHeight = headerHeight + labelHeight + footerHeight + padding * 2 + spectatorHeight + 8;
+	if( teamMode )
+		contentHeight += ctHeight + tHeight + teamGap;
+	else
+		contentHeight += ( playerCount > 0 ? playerCount : 1 ) * rowHeight;
+
+	int panelWidth = (int)( screenWidth * 0.94f );
+	if( panelWidth > 1000 )
+		panelWidth = 1000;
+	if( panelWidth < 280 )
+		panelWidth = screenWidth - 16;
+
+	int panelHeight = contentHeight;
+	if( panelHeight > maxPanelHeight )
+		panelHeight = maxPanelHeight;
+
+	int panelX = ( screenWidth - panelWidth ) / 2;
+	int panelY = ( screenHeight - panelHeight ) / 2;
+
+	if( m_bForceDraw && xend > xstart && yend > ystart )
+	{
+		panelX = xstart;
+		panelY = ystart;
+		panelWidth = xend - xstart;
+		panelHeight = yend - ystart;
+	}
+
+	if( panelWidth < 240 || panelHeight < 150 )
+	{
+		panelX = 8;
+		panelY = 8;
+		panelWidth = screenWidth - 16;
+		panelHeight = screenHeight - 16;
+	}
+
+	int panelRight = panelX + panelWidth;
+	int panelBottom = panelY + panelHeight;
+
+	SbFill( 0, 0, screenWidth, screenHeight, 0, 0, 0, config.highContrast ? 170 : 110 );
+	FillRGBABlend( panelX, panelY, panelWidth, panelHeight, 0, 0, 0, config.alpha );
+	FillRGBA( panelX, panelY, panelWidth, 1, 255, 255, 255, 16 );
+	FillRGBA( panelX, panelBottom - 1, panelWidth, 1, 0, 0, 0, 140 );
+
+	int mutedR = config.highContrast ? 210 : 150;
+	int mutedG = config.highContrast ? 212 : 154;
+	int mutedB = config.highContrast ? 214 : 160;
+
+	const char *serverName = gHUD.m_szServerName[0] ? gHUD.m_szServerName : "NEXORA";
+	SbColor( 238, 239, 240 );
+	SbTextClipped( panelX + padding, panelY + 9, panelWidth - 130, serverName );
+
+	char countBuffer[48];
+	snprintf( countBuffer, sizeof( countBuffer ), "%d PLAYERS", playerCount );
+	SbColor( mutedR, mutedG, mutedB );
+	SbTextRight( panelRight - padding, panelY + 9, countBuffer );
+
+	SbColor( mutedR, mutedG, mutedB );
+	SbText( panelX + padding, panelY + 22, "COMPETITIVE // NEXORA" );
+
+	FillRGBA( panelX + padding, panelY + 36, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
+
+	int contentTop = panelY + headerHeight;
+	int footerY = panelBottom - footerHeight + 2;
+
+	int infoWidth = ( panelWidth - padding * 2 ) < 460 ? 62 : 88;
+	int tableX = panelX + padding + infoWidth;
+	int tableWidth = panelWidth - padding * 2 - infoWidth;
+
+	SbColumns columns;
+	SbBuildColumns( columns, tableX, tableWidth, config );
+
+	if( teamMode )
+	{
+		SbDrawColumnHeaders( columns, contentTop, tableWidth, mutedR, mutedG, mutedB );
+
+		int ctY = contentTop + labelHeight;
+		SbDrawTeam(
+			ctTeam,
+			panelX + padding,
+			ctY,
+			panelWidth - padding * 2,
+			ctHeight,
+			rowHeight,
+			players,
+			playerCount,
+			config );
+
+		int tY = ctY + ctHeight + teamGap;
+		SbDrawTeam(
+			tTeam,
+			panelX + padding,
+			tY,
+			panelWidth - padding * 2,
+			tHeight,
+			rowHeight,
+			players,
+			playerCount,
+			config );
+
+		if( otherPlayers > 0 )
+			SbDrawSpectators( players, playerCount, panelX + padding, tY + tHeight + 4, panelWidth - padding * 2, config );
+	}
+	else
+	{
+		SbDrawColumnHeaders( columns, contentTop, tableWidth, mutedR, mutedG, mutedB );
+
+		int maxRows = ( footerY - contentTop - labelHeight - 8 ) / rowHeight;
 		SbDrawPlayerRows(
-			x + 10,
-			contentTop + headerHeight,
-			width - 20,
+			tableX,
+			contentTop + labelHeight,
+			tableWidth,
 			maxRows,
-			17,
+			rowHeight,
 			players,
 			playerCount,
 			0,
-			true,
+			false,
 			config );
 	}
 
 	SbColor( mutedR, mutedG, mutedB );
-	SbText( x + 14, footerY, "HOLD TAB / TAP SCOREBOARD TO CLOSE" );
+	SbText( panelX + padding, footerY, "TAB / TAP SCOREBOARD TO CLOSE" );
 
 	return 1;
 }
