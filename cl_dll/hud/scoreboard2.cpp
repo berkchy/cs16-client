@@ -539,10 +539,9 @@ void SbDrawTeam(
 
 	char scoreBuffer[24];
 	snprintf( scoreBuffer, sizeof( scoreBuffer ), "%d", team.frags );
-	float scoreScale = width < 600 ? 2.4f : 3.4f;
+	float scoreScale = width < 600 ? 1.8f : 2.4f;
 	int scoreWidth = DrawUtils::HudStringLen( scoreBuffer, scoreScale );
-	int scoreHeight = (int)( SbTextHeight() * scoreScale );
-	int scoreY = y + ( height - scoreHeight ) / 2;
+	int scoreY = y + SbTextHeight() + 6;
 	DrawUtils::DrawHudString(
 		x + ( infoWidth - scoreWidth ) / 2,
 		scoreY,
@@ -662,7 +661,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 
 	bool teamMode = gHUD.m_Teamplay != 0 && ( ctTeam.players > 0 || tTeam.players > 0 );
 
-	const int headerHeight = 44;
+	const int headerHeight = 36;
 	const int labelHeight = SbTextHeight() + 6;
 	const int footerHeight = 20;
 	const int padding = 14;
@@ -749,10 +748,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	SbColor( mutedR, mutedG, mutedB );
 	SbTextRight( panelRight - padding, panelY + 9, countBuffer );
 
-	SbColor( mutedR, mutedG, mutedB );
-	SbText( panelX + padding, panelY + 22, "COMPETITIVE // NEXORA" );
-
-	FillRGBA( panelX + padding, panelY + 36, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
+	FillRGBA( panelX + padding, panelY + 27, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
 
 	int contentTop = panelY + headerHeight;
 	int footerY = panelBottom - footerHeight + 2;
