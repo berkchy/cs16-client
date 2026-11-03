@@ -193,7 +193,7 @@ void SbHeaderIcon(
 	int b )
 {
 	int labelWidth = ( label && label[0] ) ? SbTextWidth( label ) : 0;
-	int gap = labelWidth > 0 ? 1 : 0;
+	int gap = labelWidth > 0 ? 3 : 0;
 	int total = size + gap + labelWidth;
 	int iconX = right - total;
 	int iconY = y + ( SbTextHeight() - size ) / 2;
@@ -399,16 +399,16 @@ int SbCollectPlayers( SbPlayer *players, int maxPlayers )
 
 void SbBuildColumns( SbColumns &columns, int x, int width, const SbConfig &config )
 {
-	columns.showPing = config.showPing && width >= 170;
-	columns.showKills = width >= 110;
-	columns.showDeaths = width >= 150;
-	columns.showMoney = config.showMoney && width >= 260;
+	columns.showPing = config.showPing && width >= 190;
+	columns.showKills = width >= 120;
+	columns.showDeaths = width >= 160;
+	columns.showMoney = config.showMoney && width >= 280;
 
-	const int gap = 2;
-	const int pingWidth = 38;
-	const int deathWidth = 34;
-	const int killWidth = 34;
-	const int moneyWidth = 66;
+	const int gap = 8;
+	const int pingWidth = 46;
+	const int deathWidth = 38;
+	const int killWidth = 38;
+	const int moneyWidth = 74;
 
 	int right = x + width - 2;
 
@@ -443,14 +443,18 @@ void SbDrawColumnHeaders( const SbColumns &columns, int y, int width, int r, int
 	SbColor( r, g, b );
 	SbText( columns.nameX, y, "PLAYER" );
 
+	int iconSize = SbTextHeight() - 1;
+	if( iconSize < 10 )
+		iconSize = 10;
+
 	if( columns.showMoney )
-		SbHeaderIcon( s_iconCash, columns.moneyRight - 4, y, "MONEY", 9, r, g, b );
+		SbHeaderIcon( s_iconCash, columns.moneyRight - 4, y, "MONEY", iconSize, r, g, b );
 	if( columns.showKills )
-		SbHeaderIcon( s_iconTarget, columns.killRight - 4, y, "K", 8, r, g, b );
+		SbHeaderIcon( s_iconTarget, columns.killRight - 4, y, "K", iconSize, r, g, b );
 	if( columns.showDeaths )
-		SbHeaderIcon( s_iconSkull, columns.deathRight - 4, y, "D", 8, r, g, b );
+		SbHeaderIcon( s_iconSkull, columns.deathRight - 4, y, "D", iconSize, r, g, b );
 	if( columns.showPing )
-		SbHeaderIcon( s_iconStopwatch, columns.pingRight - 4, y, "PING", 8, r, g, b );
+		SbHeaderIcon( s_iconStopwatch, columns.pingRight - 4, y, "PING", iconSize, r, g, b );
 
 	FillRGBA( columns.nameX - 2, y + SbTextHeight() + 2, width, 1, 255, 255, 255, SbFade( 18 ) );
 }
