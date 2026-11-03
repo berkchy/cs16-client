@@ -105,6 +105,7 @@ int CHud :: Redraw( float flTime, int intermission )
 	UpdateDefaultHUDColor();
 
 	const bool hideForScoreboard = g_flScoreboardFade > 0.001f;
+	const bool csgoHud = hud_style && hud_style->value >= 0.5f;
 
 	if ( m_pCvarDraw->value && (intermission || !(m_iHideHUDDisplay & HIDEHUD_ALL) ) )
 	{
@@ -116,6 +117,12 @@ int CHud :: Redraw( float flTime, int intermission )
 					continue; // skip no-intermission during intermission
 
 				if( hideForScoreboard && pList->p != static_cast<CHudBase *>( &m_Scoreboard ) )
+					continue;
+
+				if( csgoHud && ( pList->p == static_cast<CHudBase *>( &m_Battery )
+					|| pList->p == static_cast<CHudBase *>( &m_Money )
+					|| pList->p == static_cast<CHudBase *>( &m_Timer )
+					|| pList->p == static_cast<CHudBase *>( &m_AmmoSecondary ) ) )
 					continue;
 
 				pList->p->Draw( flTime );

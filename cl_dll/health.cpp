@@ -250,7 +250,9 @@ int CHudHealth::Draw(float flTime)
 {
 	if( !(gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) && !gEngfuncs.IsSpectateOnly() )
 	{
-		DrawHealthBar( flTime );
+		if( !( hud_style && hud_style->value >= 0.5f ) )
+			DrawHealthBar( flTime );
+
 		DrawDamage( flTime );
 		DrawPain( flTime );
 	}

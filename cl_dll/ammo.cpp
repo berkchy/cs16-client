@@ -1074,6 +1074,9 @@ int CHudAmmo::Draw(float flTime)
 	if( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) )
 		return 1;
 
+	if( hud_style && hud_style->value >= 0.5f )
+		return 1;
+
 	// Draw Weapon Menu
 	DrawWList(flTime);
 
@@ -1167,6 +1170,27 @@ int CHudAmmo::Draw(float flTime)
 	}
 
 	return 1;
+}
+
+bool CHudAmmo::GetAmmoInfo( int &clip, int &reserve, char *name, int nameSize ) const
+{
+	if( !m_pWeapon )
+		return false;
+
+	clip = m_pWeapon->iClip;
+	reserve = m_pWeapon->iAmmoType > 0 ? gWR.CountAmmo( m_pWeapon->iAmmoType ) : -1;
+
+	if( name && nameSize > 0 )
+	{
+		const char *weaponName = m_pWeapon->szName;
+		if( !strncmp( weaponName, "weapon_", 7 ) )
+			weaponName += 7;
+
+		strncpy( name, weaponName, nameSize - 1 );
+		name[nameSize - 1] = 0;
+	}
+
+	return true;
 }
 
 void CHudAmmo::DrawSpriteCrosshair()

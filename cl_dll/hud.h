@@ -108,6 +108,7 @@ extern cvar_t *cl_fog_r;
 extern cvar_t *cl_fog_g;
 extern cvar_t *cl_fog_b;
 extern cvar_t *cl_fog_density;
+extern cvar_t *hud_style;
 
 struct FogParameters {
 	float color[3];
@@ -211,6 +212,8 @@ public:
 	CHudUserCmd(Adjust_Crosshair);
 	CHudUserCmd(Rebuy);
 	CHudUserCmd(Autobuy);
+
+	bool GetAmmoInfo( int &clip, int &reserve, char *name, int nameSize ) const;
 
 private:
 	float m_fFade;
@@ -596,6 +599,7 @@ public:
 	int Draw(float flTime);
 	CHudMsgFunc(Battery);
 	CHudMsgFunc(ArmorType);
+	int GetArmor() const { return m_iBat; }
 	
 private:
 	enum armortype_t {
@@ -774,6 +778,7 @@ public:
 	int Draw( float flTime );
 	CHudMsgFunc(Money);
 	CHudMsgFunc(BlinkAcct);
+	int GetMoney() const { return m_iMoneyCount; }
 
 private:
 	int m_iMoneyCount;
@@ -828,6 +833,16 @@ private:
 	bool m_bPanicColorChange;
 	float m_flPanicTime;
 };
+//
+//-----------------------------------------------------
+//
+class CHudCsgo: public CHudBase
+{
+public:
+	int Init( void );
+	int Draw( float flTime );
+};
+
 //
 //-----------------------------------------------------
 //
@@ -1094,6 +1109,7 @@ public:
 	CHudMOTD        m_MOTD;
 	CHudMoney       m_Money;
 	CHudTimer       m_Timer;
+	CHudCsgo        m_Csgo;
 	CHudRadio       m_Radio;
 	CHudProgressBar m_ProgressBar;
 	CHudSniperScope m_SniperScope;
