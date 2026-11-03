@@ -108,6 +108,11 @@ struct SbIcon
 SbIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
 SbIcon s_iconBomb = { "gfx/scoreboard/unlit-bomb.png", 0, false };
 SbIcon s_iconKit = { "gfx/scoreboard/toolbox.png", 0, false };
+SbIcon s_iconCash = { "gfx/scoreboard/cash.png", 0, false };
+SbIcon s_iconSkull = { "gfx/scoreboard/skull-crossed-bones.png", 0, false };
+SbIcon s_iconStar = { "gfx/scoreboard/star.png", 0, false };
+SbIcon s_iconStopwatch = { "gfx/scoreboard/stopwatch.png", 0, false };
+SbIcon s_iconTarget = { "gfx/scoreboard/targeting.png", 0, false };
 
 void SbDrawIcon( SbIcon &icon, int x, int y, int size, int r, int g, int b, int a )
 {
@@ -175,6 +180,31 @@ void SbTextRight( int right, int y, const char *text )
 void SbTextCenter( int center, int y, const char *text )
 {
 	SbText( center - SbTextWidth( text ) / 2, y, text );
+}
+
+void SbHeaderIcon(
+	SbIcon &icon,
+	int right,
+	int y,
+	const char *label,
+	int size,
+	int r,
+	int g,
+	int b )
+{
+	int labelWidth = ( label && label[0] ) ? SbTextWidth( label ) : 0;
+	int gap = labelWidth > 0 ? 1 : 0;
+	int total = size + gap + labelWidth;
+	int iconX = right - total;
+	int iconY = y + ( SbTextHeight() - size ) / 2;
+
+	SbDrawIcon( icon, iconX, iconY, size, r, g, b, 200 );
+
+	if( labelWidth > 0 )
+	{
+		SbColor( r, g, b );
+		SbText( iconX + size + gap, y, label );
+	}
 }
 
 void SbTextClipped( int x, int y, int maxWidth, const char *text )
@@ -414,13 +444,13 @@ void SbDrawColumnHeaders( const SbColumns &columns, int y, int width, int r, int
 	SbText( columns.nameX, y, "PLAYER" );
 
 	if( columns.showMoney )
-		SbTextRight( columns.moneyRight - 4, y, "MONEY" );
+		SbHeaderIcon( s_iconCash, columns.moneyRight - 4, y, "MONEY", 9, r, g, b );
 	if( columns.showKills )
-		SbTextRight( columns.killRight - 4, y, "K" );
+		SbHeaderIcon( s_iconTarget, columns.killRight - 4, y, "K", 8, r, g, b );
 	if( columns.showDeaths )
-		SbTextRight( columns.deathRight - 4, y, "D" );
+		SbHeaderIcon( s_iconSkull, columns.deathRight - 4, y, "D", 8, r, g, b );
 	if( columns.showPing )
-		SbTextRight( columns.pingRight - 4, y, "PING" );
+		SbHeaderIcon( s_iconStopwatch, columns.pingRight - 4, y, "PING", 8, r, g, b );
 
 	FillRGBA( columns.nameX - 2, y + SbTextHeight() + 2, width, 1, 255, 255, 255, SbFade( 18 ) );
 }
@@ -509,17 +539,33 @@ int SbDrawPlayerRows(
 		if( iconSize < 8 ) iconSize = 8;
 		int iconY = rowY + ( cellHeight - iconSize ) / 2;
 
-		if( player.hasC4 )
+		if( drawn == 0 && nameMax > iconSize * 2 + 40 )
 		{
-			SbDrawIcon( s_iconBomb, nameX, iconY, iconSize, 224, 196, 132, 235 );
+			SbDrawIcon( s_iconStar, nameX, iconY, iconSize, 224, 196, 120, 235 );
 			nameX += iconSize + 3;
 			nameMax -= iconSize + 3;
 		}
-		if( player.defuse )
+
+		if( player.dead )
 		{
-			SbDrawIcon( s_iconKit, nameX, iconY, iconSize, 176, 214, 194, 235 );
+			SbDrawIcon( s_iconSkull, nameX, iconY, iconSize, 176, 178, 184, 235 );
 			nameX += iconSize + 3;
 			nameMax -= iconSize + 3;
+		}
+		else
+		{
+			if( player.hasC4 )
+			{
+				SbDrawIcon( s_iconBomb, nameX, iconY, iconSize, 224, 196, 132, 235 );
+				nameX += iconSize + 3;
+				nameMax -= iconSize + 3;
+			}
+			if( player.defuse )
+			{
+				SbDrawIcon( s_iconKit, nameX, iconY, iconSize, 176, 214, 194, 235 );
+				nameX += iconSize + 3;
+				nameMax -= iconSize + 3;
+			}
 		}
 
 		SbColor( r, g, b );
