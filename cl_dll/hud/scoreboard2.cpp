@@ -114,9 +114,25 @@ SbIcon s_iconStar = { "gfx/scoreboard/star.png", 0, false };
 SbIcon s_iconStopwatch = { "gfx/scoreboard/stopwatch.png", 0, false };
 SbIcon s_iconTarget = { "gfx/scoreboard/targeting.png", 0, false };
 
-void SbDrawIcon( SbIcon &icon, int x, int y, int size, int r, int g, int b, int a )
+SbIcon s_iconTimerDigits[10] =
 {
-	if( size <= 0 || g_flScoreboardFade <= 0.001f )
+	{ "gfx/scoreboard/timer_0.png", 0, false },
+	{ "gfx/scoreboard/timer_1.png", 0, false },
+	{ "gfx/scoreboard/timer_2.png", 0, false },
+	{ "gfx/scoreboard/timer_3.png", 0, false },
+	{ "gfx/scoreboard/timer_4.png", 0, false },
+	{ "gfx/scoreboard/timer_5.png", 0, false },
+	{ "gfx/scoreboard/timer_6.png", 0, false },
+	{ "gfx/scoreboard/timer_7.png", 0, false },
+	{ "gfx/scoreboard/timer_8.png", 0, false },
+	{ "gfx/scoreboard/timer_9.png", 0, false },
+};
+SbIcon s_iconTimerColon = { "gfx/scoreboard/timer_colon.png", 0, false };
+SbIcon s_iconTimerDash = { "gfx/scoreboard/timer_dash.png", 0, false };
+
+void SbDrawIconRect( SbIcon &icon, int x, int y, int width, int height, int r, int g, int b, int a )
+{
+	if( width <= 0 || height <= 0 || g_flScoreboardFade <= 0.001f )
 		return;
 
 	if( !icon.texture && !icon.attempted )
@@ -136,7 +152,68 @@ void SbDrawIcon( SbIcon &icon, int x, int y, int size, int r, int g, int b, int 
 		r / 255.0f, g / 255.0f, b / 255.0f, SbFade( a ) / 255.0f );
 
 	DrawUtils::Draw2DQuad(
-		(float)x, (float)y, (float)( x + size ), (float)( y + size ) );
+		(float)x, (float)y, (float)( x + width ), (float)( y + height ) );
+}
+
+void SbDrawIcon( SbIcon &icon, int x, int y, int size, int r, int g, int b, int a )
+{
+	SbDrawIconRect( icon, x, y, size, size, r, g, b, a );
+}
+
+int SbTimerGlyphWidth( char c )
+{
+	if( c >= '0' && c <= '9' )
+		return 18;
+	if( c == ':' )
+		return 8;
+	if( c == '-' )
+		return 12;
+	return 0;
+}
+
+SbIcon *SbTimerGlyph( char c )
+{
+	if( c >= '0' && c <= '9' )
+		return &s_iconTimerDigits[c - '0'];
+	if( c == ':' )
+		return &s_iconTimerColon;
+	if( c == '-' )
+		return &s_iconTimerDash;
+	return NULL;
+}
+
+void SbDrawTimer( const char *text, int right, int top, int height, int r, int g, int b, int a )
+{
+	if( !text || g_flScoreboardFade <= 0.001f )
+		return;
+
+	const int glyphHeight = 26;
+	const int gap = 3;
+	int total = 0;
+
+	for( const char *p = text; *p; ++p )
+	{
+		int glyphWidth = SbTimerGlyphWidth( *p );
+		if( glyphWidth <= 0 )
+			continue;
+		total += height * glyphWidth / glyphHeight;
+		if( p[1] )
+			total += gap;
+	}
+
+	int x = right - total;
+
+	for( const char *p = text; *p; ++p )
+	{
+		SbIcon *icon = SbTimerGlyph( *p );
+		int glyphWidth = SbTimerGlyphWidth( *p );
+		if( !icon || glyphWidth <= 0 )
+			continue;
+
+		int width = height * glyphWidth / glyphHeight;
+		SbDrawIconRect( *icon, x, top, width, height, r, g, b, a );
+		x += width + gap;
+	}
 }
 
 int SbTextWidth( const char *text )
@@ -792,7 +869,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 
 	bool teamMode = gHUD.m_Teamplay != 0 && ( ctTeam.players > 0 || tTeam.players > 0 );
 
-	const int headerHeight = 50;
+	const int headerHeight = 52;
 	const int labelHeight = SbTextHeight() + 6;
 	const int footerHeight = 20;
 	const int padding = 14;
@@ -899,22 +976,19 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 		snprintf( timerBuffer, sizeof( timerBuffer ), "--:--" );
 	}
 
-	const float timerScale = 1.8f;
-	int timerRight = panelRight - padding;
-	DrawUtils::DrawHudStringReverse(
-		timerRight,
-		panelY + 3,
-		panelX + padding,
+	SbDrawTimer(
 		timerBuffer,
-		SbFade( 255 ), SbFade( 206 ), SbFade( 74 ),
-		timerScale );
+		panelRight - padding,
+		panelY + 2,
+		26,
+		255, 206, 74, 255 );
 
 	char countBuffer[48];
 	snprintf( countBuffer, sizeof( countBuffer ), "%d PLAYERS", playerCount );
 	SbColor( mutedR, mutedG, mutedB );
-	SbTextRight( panelRight - padding, panelY + 29, countBuffer );
+	SbTextRight( panelRight - padding, panelY + 31, countBuffer );
 
-	SbFill( panelX + padding, panelY + 43, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
+	SbFill( panelX + padding, panelY + 45, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
 
 	int contentTop = panelY + headerHeight;
 	int footerY = panelBottom - footerHeight + 2;
