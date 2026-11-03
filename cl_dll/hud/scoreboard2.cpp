@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 #include "hud.h"
+#include "triangleapi.h"
 #include "cl_util.h"
 #include "parsemsg.h"
 #include "draw_util.h"
@@ -95,6 +96,42 @@ int SbFade( int value )
 	if( fade < 0.0f ) fade = 0.0f;
 	if( fade > 1.0f ) fade = 1.0f;
 	return (int)( value * fade + 0.5f );
+}
+
+struct SbIcon
+{
+	const char *path;
+	int texture;
+	bool attempted;
+};
+
+SbIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
+SbIcon s_iconBomb = { "gfx/scoreboard/unlit-bomb.png", 0, false };
+SbIcon s_iconKit = { "gfx/scoreboard/toolbox.png", 0, false };
+
+void SbDrawIcon( SbIcon &icon, int x, int y, int size, int r, int g, int b, int a )
+{
+	if( size <= 0 || g_flScoreboardFade <= 0.001f )
+		return;
+
+	if( !icon.texture && !icon.attempted )
+	{
+		icon.attempted = true;
+		icon.texture = gRenderAPI.GL_LoadTexture(
+			icon.path, NULL, 0, TF_NEAREST | TF_NOMIPMAP | TF_CLAMP );
+	}
+
+	if( !icon.texture )
+		return;
+
+	gRenderAPI.GL_SelectTexture( 0 );
+	gRenderAPI.GL_Bind( 0, icon.texture );
+	gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
+	gEngfuncs.pTriAPI->Color4f(
+		r / 255.0f, g / 255.0f, b / 255.0f, SbFade( a ) / 255.0f );
+
+	DrawUtils::Draw2DQuad(
+		(float)x, (float)y, (float)( x + size ), (float)( y + size ) );
 }
 
 int SbTextWidth( const char *text )
@@ -466,8 +503,28 @@ int SbDrawPlayerRows(
 			g = player.dead ? 152 : 252;
 			b = player.dead ? 156 : 255;
 		}
+		int nameX = columns.nameX;
+		int nameMax = columns.nameMax;
+		int iconSize = textHeight - 2;
+		if( iconSize < 8 ) iconSize = 8;
+		int iconY = rowY + ( cellHeight - iconSize ) / 2;
+
+		if( player.hasC4 )
+		{
+			SbDrawIcon( s_iconBomb, nameX, iconY, iconSize, 224, 196, 132, 235 );
+			nameX += iconSize + 3;
+			nameMax -= iconSize + 3;
+		}
+		if( player.defuse )
+		{
+			SbDrawIcon( s_iconKit, nameX, iconY, iconSize, 176, 214, 194, 235 );
+			nameX += iconSize + 3;
+			nameMax -= iconSize + 3;
+		}
+
 		SbColor( r, g, b );
-		SbTextClipped( columns.nameX, textY, columns.nameMax, player.name );
+		if( nameMax > 20 )
+			SbTextClipped( nameX, textY, nameMax, player.name );
 
 		if( columns.showKills )
 		{
@@ -545,6 +602,14 @@ void SbDrawTeam(
 	const char *name = team.number == TEAM_CT
 		? Localize( "#Cstrike_ScoreBoard_CT" )
 		: Localize( "#Cstrike_ScoreBoard_Ter" );
+
+	int logoSize = infoWidth - 12;
+	if( logoSize > 64 ) logoSize = 64;
+	SbDrawIcon(
+		s_iconShield,
+		x + ( infoWidth - logoSize ) / 2,
+		y + ( height - logoSize ) / 2,
+		logoSize, r, g, b, 36 );
 
 	SbColor( r, g, b );
 	SbTextClipped( x + 4, y + 2, infoWidth - 8, name );
