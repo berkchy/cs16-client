@@ -900,12 +900,11 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	}
 
 	const float timerScale = 1.8f;
-	int timerWidth = (int)DrawUtils::HudStringLen( timerBuffer, timerScale );
 	int timerRight = panelRight - padding;
-	DrawUtils::DrawHudString(
-		timerRight - timerWidth,
-		panelY + 3,
+	DrawUtils::DrawHudStringReverse(
 		timerRight,
+		panelY + 3,
+		panelX + padding,
 		timerBuffer,
 		SbFade( 255 ), SbFade( 206 ), SbFade( 74 ),
 		timerScale );

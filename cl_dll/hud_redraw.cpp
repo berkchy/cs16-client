@@ -24,6 +24,8 @@
 
 #include "draw_util.h"
 
+extern float g_flScoreboardFade;
+
 #define MAX_LOGO_FRAMES 56
 
 int grgLogoFrame[MAX_LOGO_FRAMES] = 
@@ -102,6 +104,8 @@ int CHud :: Redraw( float flTime, int intermission )
 
 	UpdateDefaultHUDColor();
 
+	const bool hideForScoreboard = g_flScoreboardFade > 0.001f;
+
 	if ( m_pCvarDraw->value && (intermission || !(m_iHideHUDDisplay & HIDEHUD_ALL) ) )
 	{
 		for( HUDLIST *pList = m_pHudList; pList; pList = pList->pNext )
@@ -110,6 +114,9 @@ int CHud :: Redraw( float flTime, int intermission )
 			{
 				if( intermission && !(pList->p->m_iFlags & HUD_INTERMISSION) )
 					continue; // skip no-intermission during intermission
+
+				if( hideForScoreboard && pList->p != static_cast<CHudBase *>( &m_Scoreboard ) )
+					continue;
 
 				pList->p->Draw( flTime );
 			}
