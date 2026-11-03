@@ -38,8 +38,6 @@ version.
 #include "draw_util.h"
 #include "pm_shared.h"
 
-extern float g_flScoreboardFade;
-
 int CHudTimer::Init()
 {
 	HOOK_MESSAGE( gHUD.m_Timer, RoundTime );
@@ -56,11 +54,17 @@ int CHudTimer::VidInit()
 	return 1;
 }
 
+int CHudTimer::GetRemainingSeconds() const
+{
+	if( m_iTime <= 0 )
+		return -1;
+
+	int remaining = (int)( m_iTime + m_fStartTime - gHUD.m_flTime );
+	return remaining > 0 ? remaining : 0;
+}
+
 int CHudTimer::Draw( float fTime )
 {
-	if( g_flScoreboardFade > 0.001f )
-		return 1;
-
 	if( gHUD.m_iHideHUDDisplay & ( HIDEHUD_TIMER | HIDEHUD_ALL ) )
 		return 1;
 

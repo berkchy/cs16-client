@@ -792,7 +792,7 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 
 	bool teamMode = gHUD.m_Teamplay != 0 && ( ctTeam.players > 0 || tTeam.players > 0 );
 
-	const int headerHeight = 36;
+	const int headerHeight = 50;
 	const int labelHeight = SbTextHeight() + 6;
 	const int footerHeight = 20;
 	const int padding = 14;
@@ -888,12 +888,34 @@ int CHudScoreboard :: DrawScoreboard2( float flTime )
 	SbColor( 238, 239, 240 );
 	SbTextClipped( panelX + padding, panelY + 9, panelWidth - 130, serverName );
 
+	int remaining = gHUD.m_Timer.GetRemainingSeconds();
+	char timerBuffer[16];
+	if( remaining >= 0 )
+	{
+		snprintf( timerBuffer, sizeof( timerBuffer ), "%02d:%02d", remaining / 60, remaining % 60 );
+	}
+	else
+	{
+		snprintf( timerBuffer, sizeof( timerBuffer ), "--:--" );
+	}
+
+	const float timerScale = 1.8f;
+	int timerWidth = (int)DrawUtils::HudStringLen( timerBuffer, timerScale );
+	int timerRight = panelRight - padding;
+	DrawUtils::DrawHudString(
+		timerRight - timerWidth,
+		panelY + 3,
+		timerRight,
+		timerBuffer,
+		SbFade( 255 ), SbFade( 206 ), SbFade( 74 ),
+		timerScale );
+
 	char countBuffer[48];
 	snprintf( countBuffer, sizeof( countBuffer ), "%d PLAYERS", playerCount );
 	SbColor( mutedR, mutedG, mutedB );
-	SbTextRight( panelRight - padding, panelY + 9, countBuffer );
+	SbTextRight( panelRight - padding, panelY + 29, countBuffer );
 
-	SbFill( panelX + padding, panelY + 27, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
+	SbFill( panelX + padding, panelY + 43, panelWidth - padding * 2, 1, 255, 255, 255, 26 );
 
 	int contentTop = panelY + headerHeight;
 	int footerY = panelBottom - footerHeight + 2;

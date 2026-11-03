@@ -812,6 +812,7 @@ public:
 	int Init( void );
 	int VidInit( void );
 	int Draw(float fTime);
+	int GetRemainingSeconds() const;
 	// set up the timer.
 	// [short]
 	CHudMsgFunc(RoundTime);
