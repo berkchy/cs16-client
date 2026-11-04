@@ -24,6 +24,8 @@
 #include "draw_util.h"
 #include "strl.h"
 #include "triangleapi.h"
+#include "screenfade.h"
+#include "shake.h"
 
 float color[3];
 
@@ -72,6 +74,13 @@ cvar_t *hud_killfeed_color;
 cvar_t *hud_killfeed_alpha;
 cvar_t *hud_killfeed_bgcolor;
 cvar_t *hud_killfeed_bgalpha;
+cvar_t *hud_killfade;
+cvar_t *hud_killfade_fadein;
+cvar_t *hud_killfade_fadeout;
+cvar_t *hud_killfade_fxtime;
+cvar_t *hud_killfade_holdtime;
+cvar_t *hud_killfade_color;
+cvar_t *hud_killfade_alpha;
 
 static void KfDrawIcon( KillFeedIcon &icon, int x, int y, int size,
 	int r, int g, int b, int a )
@@ -116,6 +125,100 @@ static void KfParseColor( const char *value, int &r, int &g, int &b )
 	r = max( 0, min( 255, r ) );
 	g = max( 0, min( 255, g ) );
 	b = max( 0, min( 255, b ) );
+}
+
+static float kfScreenFadeOutAt = -1.0f;
+
+static void KfApplyScreenFade( float duration, float hold, int flags,
+	int r, int g, int b, int a )
+{
+	if( !gEngfuncs.pfnSetScreenFade || duration <= 0.0f || a <= 0 )
+		return;
+
+	screenfade_t fade;
+	memset( &fade, 0, sizeof( fade ) );
+
+	float now = gEngfuncs.GetClientTime();
+	fade.fader = (byte)r;
+	fade.fadeg = (byte)g;
+	fade.fadeb = (byte)b;
+	fade.fadealpha = (byte)a;
+	fade.fadeFlags = flags;
+	fade.fadeEnd = duration;
+	fade.fadeReset = hold;
+
+	if( flags & FFADE_OUT )
+	{
+		fade.fadeSpeed = -(float)a / fade.fadeEnd;
+		fade.fadeEnd += now;
+		fade.fadeReset += fade.fadeEnd;
+	}
+	else
+	{
+		fade.fadeSpeed = (float)a / fade.fadeEnd;
+		fade.fadeReset += now;
+		fade.fadeEnd += fade.fadeReset;
+	}
+
+	gEngfuncs.pfnSetScreenFade( &fade );
+}
+
+static void KfStartScreenFade( void )
+{
+	if( !hud_killfade || hud_killfade->value < 0.5f || !gEngfuncs.pfnSetScreenFade )
+		return;
+
+	int r, g, b;
+	KfParseColor( hud_killfade_color ? hud_killfade_color->string : NULL, r, g, b );
+
+	int a = hud_killfade_alpha ? (int)hud_killfade_alpha->value : 70;
+	a = max( 0, min( 255, a ) );
+	if( a <= 0 )
+		return;
+
+	float fxTime = hud_killfade_fxtime ? hud_killfade_fxtime->value : 0.25f;
+	fxTime = max( 0.02f, min( 2.0f, fxTime ) );
+
+	float hold = hud_killfade_holdtime ? hud_killfade_holdtime->value : 0.12f;
+	hold = max( 0.0f, min( 2.0f, hold ) );
+
+	bool fadeIn = hud_killfade_fadein && hud_killfade_fadein->value >= 0.5f;
+	bool fadeOut = hud_killfade_fadeout && hud_killfade_fadeout->value >= 0.5f;
+
+	kfScreenFadeOutAt = -1.0f;
+
+	if( fadeIn )
+	{
+		KfApplyScreenFade( fxTime, hold, FFADE_OUT, r, g, b, a );
+		if( fadeOut )
+			kfScreenFadeOutAt = gEngfuncs.GetClientTime() + fxTime + hold - 0.02f;
+	}
+	else if( fadeOut )
+	{
+		KfApplyScreenFade( fxTime, hold, FFADE_IN, r, g, b, a );
+	}
+}
+
+static void KfUpdateScreenFade( void )
+{
+	if( kfScreenFadeOutAt < 0.0f )
+		return;
+
+	if( gEngfuncs.GetClientTime() < kfScreenFadeOutAt )
+		return;
+
+	kfScreenFadeOutAt = -1.0f;
+
+	int r, g, b;
+	KfParseColor( hud_killfade_color ? hud_killfade_color->string : NULL, r, g, b );
+
+	int a = hud_killfade_alpha ? (int)hud_killfade_alpha->value : 70;
+	a = max( 0, min( 255, a ) );
+
+	float fxTime = hud_killfade_fxtime ? hud_killfade_fxtime->value : 0.25f;
+	fxTime = max( 0.02f, min( 2.0f, fxTime ) );
+
+	KfApplyScreenFade( fxTime, 0.0f, FFADE_IN, r, g, b, a );
 }
 
 static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
@@ -245,6 +348,13 @@ int CHudDeathNotice :: Init( void )
 	hud_killfeed_alpha = CVAR_CREATE( "hud_killfeed_alpha", "235", FCVAR_ARCHIVE );
 	hud_killfeed_bgcolor = CVAR_CREATE( "hud_killfeed_bgcolor", "0 0 0", FCVAR_ARCHIVE );
 	hud_killfeed_bgalpha = CVAR_CREATE( "hud_killfeed_bgalpha", "110", FCVAR_ARCHIVE );
+	hud_killfade = CVAR_CREATE( "hud_killfade", "1", FCVAR_ARCHIVE );
+	hud_killfade_fadein = CVAR_CREATE( "hud_killfade_fadein", "1", FCVAR_ARCHIVE );
+	hud_killfade_fadeout = CVAR_CREATE( "hud_killfade_fadeout", "1", FCVAR_ARCHIVE );
+	hud_killfade_fxtime = CVAR_CREATE( "hud_killfade_fxtime", "0.25", FCVAR_ARCHIVE );
+	hud_killfade_holdtime = CVAR_CREATE( "hud_killfade_holdtime", "0.12", FCVAR_ARCHIVE );
+	hud_killfade_color = CVAR_CREATE( "hud_killfade_color", "255 255 255", FCVAR_ARCHIVE );
+	hud_killfade_alpha = CVAR_CREATE( "hud_killfade_alpha", "70", FCVAR_ARCHIVE );
 	cl_killsound = CVAR_CREATE( "cl_killsound", "0", FCVAR_ARCHIVE );
 	cl_killsound_path = CVAR_CREATE( "cl_killsound_path", "buttons/bell1.wav", FCVAR_ARCHIVE );
 	m_iFlags = 0;
@@ -271,6 +381,8 @@ int CHudDeathNotice :: Draw( float flTime )
 {
 	int x, y, r, g, b, i;
 	const bool csgoKillfeed = hud_style && hud_style->value >= 0.5f;
+
+	KfUpdateScreenFade();
 
 	for( i = 0; i < MAX_DEATHNOTICES; i++ )
 	{
@@ -468,6 +580,14 @@ int CHudDeathNotice :: MsgFunc_DeathMsg( const char *pszName, int iSize, void *p
 	if( holdTime < 0.5f )
 		holdTime = 0.5f;
 	rgDeathNoticeList[i].flDisplayTime = gHUD.m_flTime + holdTime;
+
+	if ((killer_this_player || g_iUser2 == killer) &&
+		!rgDeathNoticeList[i].bNonPlayerKill &&
+		!rgDeathNoticeList[i].bSuicide &&
+		!rgDeathNoticeList[i].bTeamKill)
+	{
+		KfStartScreenFade();
+	}
 
 	// Play kill sound
 	if ((killer_this_player || g_iUser2 == killer) &&
