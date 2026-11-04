@@ -28,6 +28,7 @@ struct CsIcon
 CsIcon s_iconHeart = { "gfx/scoreboard/heart.png", 0, false };
 CsIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
 CsIcon s_iconCash = { "gfx/scoreboard/dollar.png", 0, false };
+CsIcon s_iconAmmo = { "gfx/scoreboard/ammo.png", 0, false };
 
 CsIcon s_iconDigits[10] =
 {
@@ -148,8 +149,8 @@ void CsDrawMoney( int money, int left, int bottom, float scale )
 	char buffer[16];
 	sprintf( buffer, "%d", money );
 
-	int iconSize = (int)( 14 * scale );
 	int numberHeight = (int)( 18 * scale );
+	int iconSize = numberHeight;
 
 	CsDrawIcon( s_iconCash, left, bottom - iconSize, iconSize, 224, 196, 120, 220 );
 	CsDrawText( buffer, left + iconSize + (int)( 5 * scale ), bottom - numberHeight,
@@ -191,8 +192,8 @@ int CHudCsgo::Draw( float flTime )
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) )
 	{
 		char buffer[16];
-		int iconSize = (int)( 22 * scale );
 		int numberHeight = (int)( 24 * scale );
+		int iconSize = numberHeight;
 
 		sprintf( buffer, "%d", gHUD.m_Health.m_iHealth );
 
@@ -244,8 +245,11 @@ int CHudCsgo::Draw( float flTime )
 			int slashWidth = DrawUtils::HudStringLen( "/" );
 			int clipWidth = clipBuffer[0] ? CsTextWidth( clipBuffer, clipHeight ) : 0;
 			int reserveWidth = reserveBuffer[0] ? CsTextWidth( reserveBuffer, reserveHeight ) : 0;
+			int ammoIconSize = clipHeight;
 
 			int totalWidth = clipWidth;
+			if( clipWidth > 0 )
+				totalWidth += ammoIconSize + gap;
 			if( reserveWidth > 0 )
 				totalWidth += reserveWidth + gap + slashWidth + gap;
 
@@ -264,8 +268,13 @@ int CHudCsgo::Draw( float flTime )
 			}
 
 			if( clipWidth > 0 )
+			{
+				CsDrawIcon( s_iconAmmo, x, bottom - ammoIconSize, ammoIconSize,
+					238, 239, 240, 245 );
+				x += ammoIconSize + gap;
 				CsDrawText( clipBuffer, x, bottom - clipHeight, clipHeight,
 					238, 239, 240, 245 );
+			}
 
 			if( weaponName[0] )
 			{
