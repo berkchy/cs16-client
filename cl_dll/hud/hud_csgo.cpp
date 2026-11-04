@@ -242,39 +242,44 @@ int CHudCsgo::Draw( float flTime )
 				sprintf( reserveBuffer, "%d", reserve );
 
 			int gap = (int)( 6 * scale );
-			int slashWidth = DrawUtils::HudStringLen( "/" );
 			int clipWidth = clipBuffer[0] ? CsTextWidth( clipBuffer, clipHeight ) : 0;
 			int reserveWidth = reserveBuffer[0] ? CsTextWidth( reserveBuffer, reserveHeight ) : 0;
 			int ammoIconSize = clipHeight;
+			int dividerWidth = (int)( 1 * scale );
+			if( dividerWidth < 1 )
+				dividerWidth = 1;
+			int dividerGap = (int)( 7 * scale );
 
-			int totalWidth = clipWidth;
-			if( clipWidth > 0 )
-				totalWidth += ammoIconSize + gap;
-			if( reserveWidth > 0 )
-				totalWidth += reserveWidth + gap + slashWidth + gap;
+			int totalWidth = clipWidth + gap + dividerWidth + gap + reserveWidth + gap + ammoIconSize;
+			if( clipWidth <= 0 )
+				totalWidth -= gap;
+			if( reserveWidth <= 0 )
+				totalWidth -= gap;
 
 			int x = ScreenWidth - pad - totalWidth;
+
+			if( clipWidth > 0 )
+			{
+				CsDrawText( clipBuffer, x, bottom - clipHeight, clipHeight,
+					238, 239, 240, 245 );
+				x += clipWidth + dividerGap;
+			}
+
+			int dividerHeight = (int)( 22 * scale );
+			int dividerY = bottom - reserveHeight - (int)( 3 * scale );
+			FillRGBABlend( x, dividerY, dividerWidth, dividerHeight,
+				180, 184, 190, 150 );
+			x += dividerWidth + dividerGap;
 
 			if( reserveWidth > 0 )
 			{
 				CsDrawText( reserveBuffer, x, bottom - reserveHeight, reserveHeight,
 					198, 202, 208, 235 );
 				x += reserveWidth + gap;
-
-				int slashY = bottom - reserveHeight + (int)( 2 * scale );
-				DrawUtils::DrawHudString( x, slashY, ScreenWidth, "/",
-					180, 184, 190, 220 );
-				x += slashWidth + gap;
 			}
 
-			if( clipWidth > 0 )
-			{
-				CsDrawIcon( s_iconAmmo, x, bottom - ammoIconSize, ammoIconSize,
-					238, 239, 240, 245 );
-				x += ammoIconSize + gap;
-				CsDrawText( clipBuffer, x, bottom - clipHeight, clipHeight,
-					238, 239, 240, 245 );
-			}
+			CsDrawIcon( s_iconAmmo, x, bottom - ammoIconSize, ammoIconSize,
+				238, 239, 240, 245 );
 
 			if( weaponName[0] )
 			{
