@@ -27,7 +27,7 @@ struct CsIcon
 
 CsIcon s_iconHeart = { "gfx/scoreboard/heart.png", 0, false };
 CsIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
-CsIcon s_iconCash = { "gfx/scoreboard/cash.png", 0, false };
+CsIcon s_iconCash = { "gfx/scoreboard/dollar.png", 0, false };
 
 CsIcon s_iconDigits[10] =
 {

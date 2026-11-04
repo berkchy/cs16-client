@@ -108,11 +108,11 @@ struct SbIcon
 SbIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
 SbIcon s_iconBomb = { "gfx/scoreboard/unlit-bomb.png", 0, false };
 SbIcon s_iconKit = { "gfx/scoreboard/toolbox.png", 0, false };
-SbIcon s_iconCash = { "gfx/scoreboard/cash.png", 0, false };
+SbIcon s_iconCash = { "gfx/scoreboard/dollar.png", 0, false };
 SbIcon s_iconSkull = { "gfx/scoreboard/skull-crossed-bones.png", 0, false };
 SbIcon s_iconStar = { "gfx/scoreboard/star.png", 0, false };
 SbIcon s_iconStopwatch = { "gfx/scoreboard/stopwatch.png", 0, false };
-SbIcon s_iconTarget = { "gfx/scoreboard/targeting.png", 0, false };
+SbIcon s_iconTarget = { "gfx/scoreboard/kill_gun.png", 0, false };
 
 SbIcon s_iconTimerDigits[10] =
 {
