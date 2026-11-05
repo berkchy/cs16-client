@@ -58,11 +58,6 @@ struct KillFeedIcon
 	bool attempted;
 };
 
-static KillFeedIcon kfRifle = { "gfx/scoreboard/rifle.png", 0, false };
-static KillFeedIcon kfGun = { "gfx/scoreboard/kill_gun.png", 0, false };
-static KillFeedIcon kfGrenade = { "gfx/scoreboard/kill_grenade.png", 0, false };
-static KillFeedIcon kfExplosion = { "gfx/scoreboard/explosion.png", 0, false };
-static KillFeedIcon kfSkull = { "gfx/scoreboard/kill_skull.png", 0, false };
 static KillFeedIcon kfHeadshot = { "gfx/scoreboard/headshot.png", 0, false };
 
 cvar_t *hud_killfeed_fade;
@@ -100,21 +95,6 @@ static void KfDrawIcon( KillFeedIcon &icon, int x, int y, int size,
 	gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
 	gEngfuncs.pTriAPI->Color4f( r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f );
 	DrawUtils::Draw2DQuad( (float)x, (float)y, (float)( x + size ), (float)( y + size ) );
-}
-
-static KillFeedIcon *KfWeaponIcon( const DeathNoticeItem &item )
-{
-	if( item.bNonPlayerKill || item.bSuicide || !item.szKiller[0] )
-		return &kfSkull;
-
-	if( strstr( item.szWeapon, "hegrenade" ) )
-		return &kfExplosion;
-	if( strstr( item.szWeapon, "grenade" ) || strstr( item.szWeapon, "flashbang" ) )
-		return &kfGrenade;
-	if( strstr( item.szWeapon, "knife" ) )
-		return &kfGun;
-
-	return &kfRifle;
 }
 
 static void KfParseColor( const char *value, int &r, int &g, int &b )
@@ -227,15 +207,20 @@ static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
 	if( scale < 1 ) scale = 1;
 	if( scale > 2 ) scale = 2;
 
-	const int pad = 14 * scale;
-	const int rowHeight = 28 * scale;
-	const int iconSize = 22 * scale;
-	const int hsSize = 15 * scale;
-	const int gap = 6 * scale;
-	const int top = 92 * scale;
+	const int pad = 10 * scale;
+	const int rowHeight = 18 * scale;
+	const int iconSize = 14 * scale;
+	const int hsSize = 10 * scale;
+	const int gap = 4 * scale;
+	const int top = 48 * scale;
 	const int y = top + index * rowHeight;
 
-	KillFeedIcon *weapon = KfWeaponIcon( item );
+	int weaponId = item.iId >= 0 ? item.iId : gHUD.GetSpriteIndex( "d_skull" );
+	wrect_t *weaponRect = weaponId >= 0 ? &gHUD.GetSpriteRect( weaponId ) : NULL;
+	if( weaponRect && ( weaponRect->Width() <= 0 || weaponRect->Height() <= 0 ) )
+		weaponRect = NULL;
+	int weaponWidth = weaponRect ? weaponRect->Width() : iconSize;
+	int weaponHeight = weaponRect ? weaponRect->Height() : iconSize;
 	int killerWidth = item.szKiller[0] ? DrawUtils::ConsoleStringLen( item.szKiller ) : 0;
 	int victimWidth = item.szVictim[0] ? DrawUtils::ConsoleStringLen( item.szVictim ) : 0;
 	bool showHeadshot = item.iHeadShotId != 0;
@@ -272,7 +257,7 @@ static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
 		x -= victimWidth;
 	if( showHeadshot )
 		x -= gap + hsSize;
-	x -= gap + iconSize;
+	x -= gap + weaponWidth;
 	if( killerWidth > 0 )
 		x -= gap + killerWidth;
 
@@ -308,11 +293,17 @@ static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
 	if( showHeadshot )
 	{
 		x -= gap + hsSize;
-		KfDrawIcon( kfHeadshot, x, y + 1 * scale, hsSize, 255, 206, 74, (int)( 235 * fade ) );
+		KfDrawIcon( kfHeadshot, x, y + 1 * scale, hsSize, 238, 239, 240, (int)( 235 * fade ) );
 	}
 
-	x -= gap + iconSize;
-	KfDrawIcon( *weapon, x, y, iconSize, 238, 239, 240, (int)( 245 * fade ) );
+	x -= gap + weaponWidth;
+	if( weaponRect )
+	{
+		int weaponTint = (int)( 255 * textAlpha );
+		int weaponY = y + ( rowHeight - weaponHeight ) / 2;
+		SPR_Set( gHUD.GetSprite( weaponId ), weaponTint, weaponTint, weaponTint );
+		SPR_DrawAdditive( 0, x, weaponY, weaponRect );
+	}
 
 	if( killerWidth > 0 )
 	{
