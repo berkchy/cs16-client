@@ -29,6 +29,8 @@ CsIcon s_iconHeart = { "gfx/scoreboard/heart.png", 0, false };
 CsIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
 CsIcon s_iconCash = { "gfx/scoreboard/dollar.png", 0, false };
 CsIcon s_iconAmmo = { "gfx/scoreboard/ammo.png", 0, false };
+CsIcon s_iconTeamCT = { "gfx/scoreboard/ct_team.png", 0, false };
+CsIcon s_iconTeamT = { "gfx/scoreboard/t_team.png", 0, false };
 
 CsIcon s_iconDigits[10] =
 {
@@ -292,17 +294,92 @@ int CHudCsgo::Draw( float flTime )
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_TIMER ) )
 	{
+		int timerHeight = (int)( 26 * scale );
+		int timerWidth = 0;
+		int timerX = 0;
 		int remaining = gHUD.m_Timer.GetRemainingSeconds();
+
 		if( remaining >= 0 )
 		{
 			char timerBuffer[16];
 			sprintf( timerBuffer, "%02d:%02d", remaining / 60, remaining % 60 );
 
-			int timerHeight = (int)( 26 * scale );
-			int timerWidth = CsTextWidth( timerBuffer, timerHeight );
-			int timerX = ( ScreenWidth - timerWidth ) / 2;
+			timerWidth = CsTextWidth( timerBuffer, timerHeight );
+			timerX = ( ScreenWidth - timerWidth ) / 2;
 			CsDrawText( timerBuffer, timerX, (int)( 12 * scale ), timerHeight,
 				255, 206, 74, 235 );
+		}
+
+		int ctPlayers = 0;
+		int tPlayers = 0;
+		int ctAlive = 0;
+		int tAlive = 0;
+
+		for( int i = 1; i <= MAX_PLAYERS; ++i )
+		{
+			if( g_PlayerExtraInfo[i].teamnumber == TEAM_CT )
+			{
+				++ctPlayers;
+				if( !g_PlayerExtraInfo[i].dead )
+					++ctAlive;
+			}
+			else if( g_PlayerExtraInfo[i].teamnumber == TEAM_TERRORIST )
+			{
+				++tPlayers;
+				if( !g_PlayerExtraInfo[i].dead )
+					++tAlive;
+			}
+		}
+
+		if( remaining >= 0 && gHUD.m_Teamplay && ( ctPlayers > 0 || tPlayers > 0 ) )
+		{
+			int ctScore = 0;
+			int tScore = 0;
+
+			for( int i = 1; i <= gHUD.m_Scoreboard.m_iNumTeams; ++i )
+			{
+				if( g_TeamInfo[i].teamnumber == TEAM_CT )
+					ctScore = g_TeamInfo[i].frags;
+				else if( g_TeamInfo[i].teamnumber == TEAM_TERRORIST )
+					tScore = g_TeamInfo[i].frags;
+			}
+
+			int iconSize = (int)( 34 * scale );
+			int iconY = (int)( 8 * scale );
+			int sideGap = (int)( 12 * scale );
+			int scoreHeight = (int)( 18 * scale );
+			int aliveHeight = (int)( 20 * scale );
+			int scoreY = iconY + iconSize + (int)( 2 * scale );
+			int ctX = timerX - sideGap - iconSize;
+			int tX = timerX + timerWidth + sideGap;
+
+			CsDrawIcon( s_iconTeamCT, ctX, iconY, iconSize, 255, 255, 255, 245 );
+			CsDrawIcon( s_iconTeamT, tX, iconY, iconSize, 255, 255, 255, 245 );
+
+			char buffer[16];
+
+			sprintf( buffer, "%d", ctAlive );
+			int width = CsTextWidth( buffer, aliveHeight );
+			int x = ctX + ( iconSize - width ) / 2;
+			int y = iconY + ( iconSize - aliveHeight ) / 2;
+			CsDrawText( buffer, x + 1, y + 1, aliveHeight, 0, 0, 0, 120 );
+			CsDrawText( buffer, x, y, aliveHeight, 255, 255, 255, 245 );
+
+			sprintf( buffer, "%d", tAlive );
+			width = CsTextWidth( buffer, aliveHeight );
+			x = tX + ( iconSize - width ) / 2;
+			CsDrawText( buffer, x + 1, y + 1, aliveHeight, 0, 0, 0, 120 );
+			CsDrawText( buffer, x, y, aliveHeight, 255, 255, 255, 245 );
+
+			sprintf( buffer, "%d", ctScore );
+			width = CsTextWidth( buffer, scoreHeight );
+			CsDrawText( buffer, ctX + ( iconSize - width ) / 2, scoreY,
+				scoreHeight, 120, 180, 255, 240 );
+
+			sprintf( buffer, "%d", tScore );
+			width = CsTextWidth( buffer, scoreHeight );
+			CsDrawText( buffer, tX + ( iconSize - width ) / 2, scoreY,
+				scoreHeight, 235, 170, 80, 240 );
 		}
 	}
 
