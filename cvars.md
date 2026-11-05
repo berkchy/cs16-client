@@ -7,9 +7,11 @@ This file lists the custom cvars added to the CS 1.6 client.
 | Cvar | Default | Values | Description |
 | --- | --- | --- | --- |
 | `hud_style` | `0` | `0`, `1` | `0` classic HUD, `1` CS:GO-style HUD. |
+| `hud_csgo_scale` | `1.0` | `0.5-2.0` | Scales the CS:GO-style HUD elements. Lower values make the timer, health, armor, money, and ammo HUD smaller. |
 
 ### Notes
 - With `hud_style 1`, the CS:GO HUD, killfeed, and ammo layout are active.
+- `hud_csgo_scale` only affects the CS:GO-style HUD.
 - `hud_killfade` is independent and also works with the classic HUD.
 
 ## Scoreboard
@@ -60,6 +62,7 @@ A `ScreenFade`-based screen color effect. It only triggers on local player kills
 
 ```cfg
 hud_style 1
+hud_csgo_scale 1.0
 
 cl_scoreboard_style 2
 cl_scoreboard_alpha 220

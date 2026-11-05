@@ -49,6 +49,8 @@ CsIcon s_iconDigits[10] =
 CsIcon s_iconColon = { "gfx/scoreboard/timer_colon.png", 0, false };
 CsIcon s_iconDash = { "gfx/scoreboard/timer_dash.png", 0, false };
 
+cvar_t *hud_csgo_scale = NULL;
+
 int CsLoad( CsIcon &icon )
 {
 	if( !icon.texture && !icon.attempted )
@@ -106,7 +108,7 @@ int CsGlyphWidth( char c, int height )
 int CsTextWidth( const char *text, int height )
 {
 	int width = 0;
-	int gap = ( 3 * height + 13 ) / 26;
+	int gap = ( 2 * height + 13 ) / 26;
 
 	for( const char *p = text; *p; ++p )
 	{
@@ -125,7 +127,7 @@ int CsTextWidth( const char *text, int height )
 
 void CsDrawText( const char *text, int x, int y, int height, int r, int g, int b, int a )
 {
-	int gap = ( 3 * height + 13 ) / 26;
+	int gap = ( 2 * height + 13 ) / 26;
 
 	for( const char *p = text; *p; ++p )
 	{
@@ -151,11 +153,11 @@ void CsDrawMoney( int money, int left, int bottom, float scale )
 	char buffer[16];
 	sprintf( buffer, "%d", money );
 
-	int numberHeight = (int)( 18 * scale );
+	int numberHeight = (int)( 16 * scale );
 	int iconSize = numberHeight;
 
 	CsDrawIcon( s_iconCash, left, bottom - iconSize, iconSize, 224, 196, 120, 220 );
-	CsDrawText( buffer, left + iconSize + (int)( 5 * scale ), bottom - numberHeight,
+	CsDrawText( buffer, left + iconSize + (int)( 4 * scale ), bottom - numberHeight,
 		numberHeight, 210, 210, 206, 235 );
 }
 
@@ -163,6 +165,7 @@ void CsDrawMoney( int money, int left, int bottom, float scale )
 
 int CHudCsgo::Init( void )
 {
+	hud_csgo_scale = CVAR_CREATE( "hud_csgo_scale", "1", FCVAR_ARCHIVE );
 	m_iFlags = HUD_DRAW;
 	gHUD.AddHudElem( this );
 	return 1;
@@ -188,14 +191,24 @@ int CHudCsgo::Draw( float flTime )
 	if( scale > 1.8f )
 		scale = 1.8f;
 
+	float userScale = hud_csgo_scale ? hud_csgo_scale->value : 1.0f;
+	if( userScale < 0.5f )
+		userScale = 0.5f;
+	if( userScale > 2.0f )
+		userScale = 2.0f;
+	scale *= userScale;
+	if( scale < 0.5f )
+		scale = 0.5f;
+
 	int pad = (int)( 20 * scale );
 	int bottom = ScreenHeight - (int)( 18 * scale );
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) )
 	{
 		char buffer[16];
-		int numberHeight = (int)( 24 * scale );
+		int numberHeight = (int)( 22 * scale );
 		int iconSize = numberHeight;
+		int textGap = (int)( 5 * scale );
 
 		sprintf( buffer, "%d", gHUD.m_Health.m_iHealth );
 
@@ -208,14 +221,15 @@ int CHudCsgo::Draw( float flTime )
 		}
 
 		int healthX = pad;
+		int healthTextX = healthX + iconSize + textGap;
 		CsDrawIcon( s_iconHeart, healthX, bottom - iconSize, iconSize, red, green, blue, 245 );
-		CsDrawText( buffer, healthX + iconSize + (int)( 7 * scale ),
+		CsDrawText( buffer, healthTextX,
 			bottom - numberHeight, numberHeight, red, green, blue, 245 );
 
-		int armorX = pad + (int)( 132 * scale );
+		int armorX = healthTextX + CsTextWidth( buffer, numberHeight ) + (int)( 18 * scale );
 		sprintf( buffer, "%d", gHUD.m_Battery.GetArmor() );
 		CsDrawIcon( s_iconShield, armorX, bottom - iconSize, iconSize, 190, 214, 255, 240 );
-		CsDrawText( buffer, armorX + iconSize + (int)( 7 * scale ),
+		CsDrawText( buffer, armorX + iconSize + textGap,
 			bottom - numberHeight, numberHeight, 200, 220, 255, 240 );
 
 		if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY ) )
