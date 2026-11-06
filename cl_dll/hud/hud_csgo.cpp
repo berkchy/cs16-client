@@ -24,7 +24,6 @@ struct CsIcon
 	bool attempted;
 };
 
-CsIcon s_iconShield = { "gfx/scoreboard/shield.png", 0, false };
 CsIcon s_iconCash = { "gfx/scoreboard/dollar.png", 0, false };
 CsIcon s_iconAmmo = { "gfx/scoreboard/ammo.png", 0, false };
 CsIcon s_iconTeamCT = { "gfx/scoreboard/ct_team.png", 0, false };
@@ -94,18 +93,24 @@ void CsDrawHealthCross( int x, int y, int size, int r, int g, int b, int a )
 	FillRGBABlend( x, y + offset, size, thickness, r, g, b, a );
 }
 
-void CsDrawValueBar( int x, int y, int width, int height, int value, int maxValue,
-	int r, int g, int b, int a )
+void CsDrawArmorShield( int x, int y, int size, int r, int g, int b, int a )
 {
-	if( width <= 0 || height <= 0 || maxValue <= 0 )
+	if( size <= 0 )
 		return;
 
-	FillRGBABlend( x, y, width, height, 45, 45, 45, 170 );
+	int topHeight = size / 5;
+	for( int row = 0; row < size; ++row )
+	{
+		int width = size;
+		if( row > topHeight )
+		{
+			float t = (float)( row - topHeight ) / (float)( size - topHeight );
+			width = (int)( size * ( 1.0f - t * t ) );
+		}
 
-	value = max( 0, min( maxValue, value ) );
-	int fillWidth = width * value / maxValue;
-	if( fillWidth > 0 )
-		FillRGBABlend( x, y, fillWidth, height, r, g, b, a );
+		int inset = ( size - width ) / 2;
+		FillRGBABlend( x + inset, y + row, width, 1, r, g, b, a );
+	}
 }
 
 int CsGlyphBaseWidth( char c )
@@ -171,20 +176,6 @@ void CsDrawText( const char *text, int x, int y, int height, int r, int g, int b
 	}
 }
 
-void CsDrawMoney( int money, int left, int bottom, float scale )
-{
-	char buffer[16];
-	sprintf( buffer, "%d", money );
-
-	int numberHeight = (int)( 16 * scale );
-	int iconSize = (int)( 13 * scale );
-	int iconY = bottom - numberHeight + ( numberHeight - iconSize ) / 2;
-
-	CsDrawIcon( s_iconCash, left, iconY, iconSize, 150, 205, 75, 235 );
-	CsDrawText( buffer, left + iconSize + (int)( 4 * scale ), bottom - numberHeight,
-		numberHeight, 150, 205, 75, 245 );
-}
-
 } // namespace
 
 int CHudCsgo::Init( void )
@@ -224,17 +215,21 @@ int CHudCsgo::Draw( float flTime )
 	if( scale < 0.5f )
 		scale = 0.5f;
 
-	int pad = (int)( 20 * scale );
-	int bottom = ScreenHeight - (int)( 18 * scale );
+	int pad = (int)( 10 * scale );
+	int numberHeight = (int)( 19 * scale );
+	int iconSize = (int)( 14 * scale );
+	int textGap = (int)( 4 * scale );
+	int panelPadX = (int)( 10 * scale );
+	int panelPadY = (int)( 4 * scale );
+	int panelHeight = numberHeight + panelPadY * 2;
+	int panelTop = ScreenHeight - panelHeight;
+	int contentBottom = ScreenHeight - panelPadY;
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) )
 	{
 		char healthBuffer[16];
 		char armorBuffer[16];
-		int numberHeight = (int)( 23 * scale );
-		int iconSize = (int)( 17 * scale );
-		int textGap = (int)( 5 * scale );
-		int iconY = bottom - numberHeight + ( numberHeight - iconSize ) / 2;
+		char moneyBuffer[16];
 
 		int health = gHUD.m_Health.m_iHealth;
 		int armor = gHUD.m_Battery.GetArmor();
@@ -252,39 +247,47 @@ int CHudCsgo::Draw( float flTime )
 		int healthX = pad;
 		int healthTextX = healthX + iconSize + textGap;
 		int healthWidth = CsTextWidth( healthBuffer, numberHeight );
-		int barGap = (int)( 6 * scale );
-		int barWidth = (int)( 22 * scale );
-		int barHeight = max( 1, (int)( 2 * scale ) );
-		int barY = bottom - numberHeight + ( numberHeight - barHeight ) / 2;
-
-		int healthBarX = healthTextX + healthWidth + barGap;
-		int armorX = healthBarX + barWidth + (int)( 8 * scale );
+		int armorX = healthTextX + healthWidth + (int)( 18 * scale );
 		int armorTextX = armorX + iconSize + textGap;
 		int armorWidth = CsTextWidth( armorBuffer, numberHeight );
-		int armorBarX = armorTextX + armorWidth + barGap;
+		int armorEnd = armorTextX + armorWidth;
 
-		int panelLeft = healthX - (int)( 4 * scale );
-		int panelTop = bottom - numberHeight - (int)( 4 * scale );
-		int panelRight = armorBarX + barWidth + (int)( 6 * scale );
-		int panelHeight = numberHeight + (int)( 8 * scale );
-		FillRGBABlend( panelLeft, panelTop, panelRight - panelLeft, panelHeight,
-			0, 0, 0, 165 );
+		int moneyIconSize = (int)( 10 * scale );
+		int moneyHeight = (int)( 13 * scale );
+		int moneyTextGap = (int)( 4 * scale );
+		int moneyIconX = 0;
+		int moneyTextX = 0;
+		int moneyWidth = 0;
+		bool showMoney = !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY );
 
-		CsDrawValueBar( healthBarX, barY, barWidth, barHeight, health, 100,
-			238, 239, 240, 235 );
-		CsDrawValueBar( armorBarX, barY, barWidth, barHeight, armor, 100,
-			238, 239, 240, 235 );
+		if( showMoney )
+		{
+			sprintf( moneyBuffer, "%d", gHUD.m_Money.GetMoney() );
+			moneyWidth = CsTextWidth( moneyBuffer, moneyHeight );
+			moneyIconX = armorEnd + (int)( 16 * scale );
+			moneyTextX = moneyIconX + moneyIconSize + moneyTextGap;
+		}
 
+		int panelRight = showMoney ? moneyTextX + moneyWidth + panelPadX : armorEnd + panelPadX;
+		FillRGBABlend( 0, panelTop, panelRight, panelHeight, 0, 0, 0, 165 );
+
+		int iconY = contentBottom - numberHeight + ( numberHeight - iconSize ) / 2;
 		CsDrawHealthCross( healthX, iconY, iconSize, red, green, blue, 245 );
 		CsDrawText( healthBuffer, healthTextX,
-			bottom - numberHeight, numberHeight, red, green, blue, 245 );
+			contentBottom - numberHeight, numberHeight, red, green, blue, 245 );
 
-		CsDrawIcon( s_iconShield, armorX, iconY, iconSize, 238, 239, 240, 240 );
+		CsDrawArmorShield( armorX, iconY, iconSize, 238, 239, 240, 240 );
 		CsDrawText( armorBuffer, armorTextX,
-			bottom - numberHeight, numberHeight, 238, 239, 240, 240 );
+			contentBottom - numberHeight, numberHeight, 238, 239, 240, 240 );
 
-		if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY ) )
-			CsDrawMoney( gHUD.m_Money.GetMoney(), pad, bottom - (int)( 38 * scale ), scale );
+		if( showMoney )
+		{
+			int moneyIconY = contentBottom - moneyHeight + ( moneyHeight - moneyIconSize ) / 2;
+			CsDrawIcon( s_iconCash, moneyIconX, moneyIconY, moneyIconSize,
+				238, 239, 240, 245 );
+			CsDrawText( moneyBuffer, moneyTextX,
+				contentBottom - moneyHeight, moneyHeight, 238, 239, 240, 245 );
+		}
 	}
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_WEAPONS ) )
@@ -295,8 +298,6 @@ int CHudCsgo::Draw( float flTime )
 
 		if( gHUD.m_Ammo.GetAmmoInfo( clip, reserve, weaponName, sizeof( weaponName ) ) )
 		{
-			int clipHeight = (int)( 23 * scale );
-			int reserveHeight = (int)( 13 * scale );
 			char clipBuffer[16] = { 0 };
 			char reserveBuffer[16] = { 0 };
 
@@ -305,51 +306,67 @@ int CHudCsgo::Draw( float flTime )
 			if( reserve >= 0 )
 				sprintf( reserveBuffer, "%d", reserve );
 
-			int gap = (int)( 6 * scale );
-			int clipWidth = clipBuffer[0] ? CsTextWidth( clipBuffer, clipHeight ) : 0;
-			int reserveWidth = reserveBuffer[0] ? CsTextWidth( reserveBuffer, reserveHeight ) : 0;
-			int ammoIconSize = (int)( 17 * scale );
+			int gap = (int)( 5 * scale );
+			int dividerGap = (int)( 6 * scale );
 			int dividerWidth = (int)( 1 * scale );
 			if( dividerWidth < 1 )
 				dividerWidth = 1;
-			int dividerGap = (int)( 7 * scale );
 
-			int totalWidth = clipWidth + gap + dividerWidth + gap + reserveWidth + gap + ammoIconSize;
-			if( clipWidth <= 0 )
-				totalWidth -= gap;
-			if( reserveWidth <= 0 )
-				totalWidth -= gap;
+			int clipWidth = clipBuffer[0] ? CsTextWidth( clipBuffer, numberHeight ) : 0;
+			int reserveWidth = reserveBuffer[0] ? CsTextWidth( reserveBuffer, numberHeight ) : 0;
 
-			int x = ScreenWidth - pad - totalWidth;
-
+			int totalWidth = 0;
 			if( clipWidth > 0 )
-			{
-				CsDrawText( clipBuffer, x, bottom - clipHeight, clipHeight,
-					238, 239, 240, 245 );
-				x += clipWidth + dividerGap;
-			}
-
-			int dividerHeight = (int)( 16 * scale );
-			int dividerY = bottom - reserveHeight - (int)( 3 * scale );
-			FillRGBABlend( x, dividerY, dividerWidth, dividerHeight,
-				180, 184, 190, 150 );
-			x += dividerWidth + dividerGap;
-
+				totalWidth += clipWidth;
+			if( clipWidth > 0 && reserveWidth > 0 )
+				totalWidth += dividerWidth + dividerGap * 2;
 			if( reserveWidth > 0 )
-			{
-				CsDrawText( reserveBuffer, x, bottom - reserveHeight, reserveHeight,
-					198, 202, 208, 235 );
-				x += reserveWidth + gap;
-			}
+				totalWidth += reserveWidth;
+			if( totalWidth > 0 )
+				totalWidth += gap + iconSize;
 
-			CsDrawIcon( s_iconAmmo, x, bottom - ammoIconSize, ammoIconSize,
-				238, 239, 240, 245 );
+			if( totalWidth > 0 )
+			{
+				int x = ScreenWidth - pad - totalWidth;
+				int panelLeft = x - panelPadX;
+				FillRGBABlend( panelLeft, panelTop, ScreenWidth - panelLeft, panelHeight,
+					0, 0, 0, 165 );
+
+				int textY = contentBottom - numberHeight;
+
+				if( clipWidth > 0 )
+				{
+					CsDrawText( clipBuffer, x, textY, numberHeight, 238, 239, 240, 245 );
+					x += clipWidth + dividerGap;
+				}
+
+				if( clipWidth > 0 && reserveWidth > 0 )
+				{
+					int dividerHeight = (int)( 14 * scale );
+					int dividerY = contentBottom - numberHeight
+						+ ( numberHeight - dividerHeight ) / 2;
+					FillRGBABlend( x, dividerY, dividerWidth, dividerHeight,
+						180, 184, 190, 150 );
+					x += dividerWidth + dividerGap;
+				}
+
+				if( reserveWidth > 0 )
+				{
+					CsDrawText( reserveBuffer, x, textY, numberHeight, 210, 214, 220, 235 );
+					x += reserveWidth + gap;
+				}
+
+				CsDrawIcon( s_iconAmmo, x,
+					contentBottom - numberHeight + ( numberHeight - iconSize ) / 2,
+					iconSize, 238, 239, 240, 245 );
+			}
 		}
 	}
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_TIMER ) )
 	{
-		int timerHeight = (int)( 16 * scale );
+		int timerHeight = (int)( 14 * scale );
+		int timerY = (int)( 6 * scale );
 		int timerWidth = 0;
 		int timerX = 0;
 		int remaining = gHUD.m_Timer.GetRemainingSeconds();
@@ -361,7 +378,14 @@ int CHudCsgo::Draw( float flTime )
 
 			timerWidth = CsTextWidth( timerBuffer, timerHeight );
 			timerX = ( ScreenWidth - timerWidth ) / 2;
-			CsDrawText( timerBuffer, timerX, (int)( 8 * scale ), timerHeight,
+
+			int timerPadX = (int)( 8 * scale );
+			int timerPadY = (int)( 4 * scale );
+			FillRGBABlend( timerX - timerPadX, timerY - timerPadY,
+				timerWidth + timerPadX * 2, timerHeight + timerPadY * 2,
+				0, 0, 0, 165 );
+
+			CsDrawText( timerBuffer, timerX, timerY, timerHeight,
 				238, 239, 240, 245 );
 		}
 
@@ -376,6 +400,8 @@ int CHudCsgo::Draw( float flTime )
 				continue;
 
 			bool alive = !g_PlayerExtraInfo[i].dead;
+			if( alive && g_PlayerExtraInfo[i].sb_health == 0 )
+				alive = false;
 			if( i == gHUD.m_Scoreboard.m_iPlayerNum )
 				alive = alive && gHUD.m_Health.m_iHealth > 0;
 
@@ -406,14 +432,14 @@ int CHudCsgo::Draw( float flTime )
 					tScore = g_TeamInfo[i].frags;
 			}
 
-			int iconSize = (int)( 20 * scale );
-			int iconY = (int)( 6 * scale );
-			int sideGap = (int)( 10 * scale );
+			int teamIconSize = (int)( 17 * scale );
+			int sideGap = (int)( 12 * scale );
 			int teamGap = (int)( 4 * scale );
-			int scoreHeight = (int)( 16 * scale );
-			int aliveHeight = (int)( 7 * scale );
-			int scoreY = iconY + ( iconSize - scoreHeight ) / 2;
-			int aliveY = iconY + iconSize + (int)( 1 * scale );
+			int scoreHeight = (int)( 13 * scale );
+			int aliveHeight = (int)( 6 * scale );
+			int teamY = timerY + timerHeight + (int)( 10 * scale );
+			int scoreY = teamY + ( teamIconSize - scoreHeight ) / 2;
+			int aliveY = teamY + teamIconSize + (int)( 1 * scale );
 
 			char ctScoreBuffer[16];
 			char tScoreBuffer[16];
@@ -429,22 +455,24 @@ int CHudCsgo::Draw( float flTime )
 			int ctAliveWidth = CsTextWidth( ctAliveBuffer, aliveHeight );
 			int tAliveWidth = CsTextWidth( tAliveBuffer, aliveHeight );
 
-			int ctScoreX = timerX - sideGap - ctScoreWidth;
-			int ctIconX = ctScoreX - teamGap - iconSize;
-			int tScoreX = timerX + timerWidth + sideGap;
-			int tIconX = tScoreX + tScoreWidth + teamGap;
+			int totalWidth = teamIconSize + teamGap + ctScoreWidth + sideGap
+				+ tScoreWidth + teamGap + teamIconSize;
+			int ctIconX = ( ScreenWidth - totalWidth ) / 2;
+			int ctScoreX = ctIconX + teamIconSize + teamGap;
+			int tIconX = ScreenWidth - ctIconX - teamIconSize;
+			int tScoreX = tIconX - teamGap - tScoreWidth;
 
-			CsDrawIcon( s_iconTeamCT, ctIconX, iconY, iconSize, 255, 255, 255, 255 );
-			CsDrawIcon( s_iconTeamT, tIconX, iconY, iconSize, 255, 255, 255, 255 );
+			CsDrawIcon( s_iconTeamCT, ctIconX, teamY, teamIconSize, 255, 255, 255, 255 );
+			CsDrawIcon( s_iconTeamT, tIconX, teamY, teamIconSize, 255, 255, 255, 255 );
 
 			CsDrawText( ctScoreBuffer, ctScoreX, scoreY,
 				scoreHeight, 131, 165, 222, 240 );
 			CsDrawText( tScoreBuffer, tScoreX, scoreY,
 				scoreHeight, 232, 197, 111, 240 );
 
-			CsDrawText( ctAliveBuffer, ctIconX + ( iconSize - ctAliveWidth ) / 2, aliveY,
+			CsDrawText( ctAliveBuffer, ctIconX + ( teamIconSize - ctAliveWidth ) / 2, aliveY,
 				aliveHeight, 220, 220, 220, 200 );
-			CsDrawText( tAliveBuffer, tIconX + ( iconSize - tAliveWidth ) / 2, aliveY,
+			CsDrawText( tAliveBuffer, tIconX + ( teamIconSize - tAliveWidth ) / 2, aliveY,
 				aliveHeight, 220, 220, 220, 200 );
 		}
 	}
