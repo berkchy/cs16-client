@@ -78,23 +78,6 @@ void CsDrawIconRect( CsIcon &icon, int x, int y, int width, int height, int r, i
 	DrawUtils::Draw2DQuad( (float)x, (float)y, (float)( x + width ), (float)( y + height ) );
 }
 
-void CsDrawIconAdditive( CsIcon &icon, int x, int y, int size, int r, int g, int b, int a )
-{
-	if( size <= 0 )
-		return;
-
-	int texture = CsLoad( icon );
-	if( !texture )
-		return;
-
-	gRenderAPI.GL_SelectTexture( 0 );
-	gRenderAPI.GL_Bind( 0, texture );
-	gEngfuncs.pTriAPI->RenderMode( kRenderTransAdd );
-	gEngfuncs.pTriAPI->Color4f( r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f );
-
-	DrawUtils::Draw2DQuad( (float)x, (float)y, (float)( x + size ), (float)( y + size ) );
-}
-
 void CsDrawIcon( CsIcon &icon, int x, int y, int size, int r, int g, int b, int a )
 {
 	CsDrawIconRect( icon, x, y, size, size, r, g, b, a );
@@ -109,6 +92,20 @@ void CsDrawHealthCross( int x, int y, int size, int r, int g, int b, int a )
 	int offset = ( size - thickness ) / 2;
 	FillRGBABlend( x + offset, y, thickness, size, r, g, b, a );
 	FillRGBABlend( x, y + offset, size, thickness, r, g, b, a );
+}
+
+void CsDrawValueBar( int x, int y, int width, int height, int value, int maxValue,
+	int r, int g, int b, int a )
+{
+	if( width <= 0 || height <= 0 || maxValue <= 0 )
+		return;
+
+	FillRGBABlend( x, y, width, height, 45, 45, 45, 170 );
+
+	value = max( 0, min( maxValue, value ) );
+	int fillWidth = width * value / maxValue;
+	if( fillWidth > 0 )
+		FillRGBABlend( x, y, fillWidth, height, r, g, b, a );
 }
 
 int CsGlyphBaseWidth( char c )
@@ -232,16 +229,20 @@ int CHudCsgo::Draw( float flTime )
 
 	if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) )
 	{
-		char buffer[16];
+		char healthBuffer[16];
+		char armorBuffer[16];
 		int numberHeight = (int)( 23 * scale );
 		int iconSize = (int)( 17 * scale );
 		int textGap = (int)( 5 * scale );
 		int iconY = bottom - numberHeight + ( numberHeight - iconSize ) / 2;
 
-		sprintf( buffer, "%d", gHUD.m_Health.m_iHealth );
+		int health = gHUD.m_Health.m_iHealth;
+		int armor = gHUD.m_Battery.GetArmor();
+		sprintf( healthBuffer, "%d", health );
+		sprintf( armorBuffer, "%d", armor );
 
 		int red = 238, green = 239, blue = 240;
-		if( gHUD.m_Health.m_iHealth <= 25 )
+		if( health <= 25 )
 		{
 			red = 232;
 			green = 104;
@@ -250,14 +251,36 @@ int CHudCsgo::Draw( float flTime )
 
 		int healthX = pad;
 		int healthTextX = healthX + iconSize + textGap;
+		int healthWidth = CsTextWidth( healthBuffer, numberHeight );
+		int barGap = (int)( 6 * scale );
+		int barWidth = (int)( 22 * scale );
+		int barHeight = max( 1, (int)( 2 * scale ) );
+		int barY = bottom - numberHeight + ( numberHeight - barHeight ) / 2;
+
+		int healthBarX = healthTextX + healthWidth + barGap;
+		int armorX = healthBarX + barWidth + (int)( 8 * scale );
+		int armorTextX = armorX + iconSize + textGap;
+		int armorWidth = CsTextWidth( armorBuffer, numberHeight );
+		int armorBarX = armorTextX + armorWidth + barGap;
+
+		int panelLeft = healthX - (int)( 4 * scale );
+		int panelTop = bottom - numberHeight - (int)( 4 * scale );
+		int panelRight = armorBarX + barWidth + (int)( 6 * scale );
+		int panelHeight = numberHeight + (int)( 8 * scale );
+		FillRGBABlend( panelLeft, panelTop, panelRight - panelLeft, panelHeight,
+			0, 0, 0, 165 );
+
+		CsDrawValueBar( healthBarX, barY, barWidth, barHeight, health, 100,
+			238, 239, 240, 235 );
+		CsDrawValueBar( armorBarX, barY, barWidth, barHeight, armor, 100,
+			238, 239, 240, 235 );
+
 		CsDrawHealthCross( healthX, iconY, iconSize, red, green, blue, 245 );
-		CsDrawText( buffer, healthTextX,
+		CsDrawText( healthBuffer, healthTextX,
 			bottom - numberHeight, numberHeight, red, green, blue, 245 );
 
-		int armorX = healthTextX + CsTextWidth( buffer, numberHeight ) + (int)( 18 * scale );
-		sprintf( buffer, "%d", gHUD.m_Battery.GetArmor() );
 		CsDrawIcon( s_iconShield, armorX, iconY, iconSize, 238, 239, 240, 240 );
-		CsDrawText( buffer, armorX + iconSize + textGap,
+		CsDrawText( armorBuffer, armorTextX,
 			bottom - numberHeight, numberHeight, 238, 239, 240, 240 );
 
 		if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY ) )
@@ -349,16 +372,23 @@ int CHudCsgo::Draw( float flTime )
 
 		for( int i = 1; i <= MAX_PLAYERS; ++i )
 		{
+			if( !g_PlayerInfoList[i].name || !g_PlayerInfoList[i].name[0] )
+				continue;
+
+			bool alive = !g_PlayerExtraInfo[i].dead;
+			if( i == gHUD.m_Scoreboard.m_iPlayerNum )
+				alive = alive && gHUD.m_Health.m_iHealth > 0;
+
 			if( g_PlayerExtraInfo[i].teamnumber == TEAM_CT )
 			{
 				++ctPlayers;
-				if( !g_PlayerExtraInfo[i].dead )
+				if( alive )
 					++ctAlive;
 			}
 			else if( g_PlayerExtraInfo[i].teamnumber == TEAM_TERRORIST )
 			{
 				++tPlayers;
-				if( !g_PlayerExtraInfo[i].dead )
+				if( alive )
 					++tAlive;
 			}
 		}
@@ -404,8 +434,8 @@ int CHudCsgo::Draw( float flTime )
 			int tScoreX = timerX + timerWidth + sideGap;
 			int tIconX = tScoreX + tScoreWidth + teamGap;
 
-			CsDrawIconAdditive( s_iconTeamCT, ctIconX, iconY, iconSize, 255, 255, 255, 245 );
-			CsDrawIconAdditive( s_iconTeamT, tIconX, iconY, iconSize, 255, 255, 255, 245 );
+			CsDrawIcon( s_iconTeamCT, ctIconX, iconY, iconSize, 255, 255, 255, 255 );
+			CsDrawIcon( s_iconTeamT, tIconX, iconY, iconSize, 255, 255, 255, 255 );
 
 			CsDrawText( ctScoreBuffer, ctScoreX, scoreY,
 				scoreHeight, 131, 165, 222, 240 );

@@ -43,6 +43,7 @@ Killfeed uses the CS:GO-style layout only when `hud_style 1` is active. The fade
 | `hud_killfeed_alpha` | `235` | `0-255` | Text brightness/opacity. |
 | `hud_killfeed_bgcolor` | `"0 0 0"` | `"r g b"` | Row background color. |
 | `hud_killfeed_bgalpha` | `110` | `0-255` | Row background opacity. |
+| `hud_killfeed_rowspacing` | `4` | `0-32` | Extra vertical gap between rows, in 480p HUD units. |
 
 ## Killfade
 
@@ -83,6 +84,7 @@ hud_killfeed_color ""
 hud_killfeed_alpha 235
 hud_killfeed_bgcolor "0 0 0"
 hud_killfeed_bgalpha 110
+hud_killfeed_rowspacing 4
 
 hud_killfade 1
 hud_killfade_fadein 1

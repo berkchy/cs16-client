@@ -69,6 +69,7 @@ cvar_t *hud_killfeed_color;
 cvar_t *hud_killfeed_alpha;
 cvar_t *hud_killfeed_bgcolor;
 cvar_t *hud_killfeed_bgalpha;
+cvar_t *hud_killfeed_rowspacing;
 cvar_t *hud_killfade;
 cvar_t *hud_killfade_fadein;
 cvar_t *hud_killfade_fadeout;
@@ -213,7 +214,9 @@ static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
 	const int hsSize = 10 * scale;
 	const int gap = 4 * scale;
 	const int top = 48 * scale;
-	const int y = top + index * rowHeight;
+	int rowSpacing = hud_killfeed_rowspacing ? (int)( hud_killfeed_rowspacing->value * scale ) : 4 * scale;
+	rowSpacing = max( 0, min( 32 * scale, rowSpacing ) );
+	const int y = top + index * ( rowHeight + rowSpacing );
 
 	int weaponId = item.iId >= 0 ? item.iId : gHUD.GetSpriteIndex( "d_skull" );
 	wrect_t *weaponRect = weaponId >= 0 ? &gHUD.GetSpriteRect( weaponId ) : NULL;
@@ -267,7 +270,7 @@ static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
 	int bgR, bgG, bgB;
 	KfParseColor( hud_killfeed_bgcolor ? hud_killfeed_bgcolor->string : NULL, bgR, bgG, bgB );
 	if( bgAlpha > 0 )
-		FillRGBABlend( left, y - 5 * scale, width, rowHeight - 4 * scale,
+		FillRGBABlend( left, y - 2 * scale, width, rowHeight + 2 * scale,
 			bgR, bgG, bgB, bgAlpha );
 
 	int cfgR, cfgG, cfgB;
@@ -339,6 +342,7 @@ int CHudDeathNotice :: Init( void )
 	hud_killfeed_alpha = CVAR_CREATE( "hud_killfeed_alpha", "235", FCVAR_ARCHIVE );
 	hud_killfeed_bgcolor = CVAR_CREATE( "hud_killfeed_bgcolor", "0 0 0", FCVAR_ARCHIVE );
 	hud_killfeed_bgalpha = CVAR_CREATE( "hud_killfeed_bgalpha", "110", FCVAR_ARCHIVE );
+	hud_killfeed_rowspacing = CVAR_CREATE( "hud_killfeed_rowspacing", "4", FCVAR_ARCHIVE );
 	hud_killfade = CVAR_CREATE( "hud_killfade", "1", FCVAR_ARCHIVE );
 	hud_killfade_fadein = CVAR_CREATE( "hud_killfade_fadein", "1", FCVAR_ARCHIVE );
 	hud_killfade_fadeout = CVAR_CREATE( "hud_killfade_fadeout", "1", FCVAR_ARCHIVE );
