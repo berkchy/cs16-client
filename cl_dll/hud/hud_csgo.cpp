@@ -252,23 +252,7 @@ int CHudCsgo::Draw( float flTime )
 		int armorWidth = CsTextWidth( armorBuffer, numberHeight );
 		int armorEnd = armorTextX + armorWidth;
 
-		int moneyIconSize = (int)( 10 * scale );
-		int moneyHeight = (int)( 13 * scale );
-		int moneyTextGap = (int)( 4 * scale );
-		int moneyIconX = 0;
-		int moneyTextX = 0;
-		int moneyWidth = 0;
-		bool showMoney = !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY );
-
-		if( showMoney )
-		{
-			sprintf( moneyBuffer, "%d", gHUD.m_Money.GetMoney() );
-			moneyWidth = CsTextWidth( moneyBuffer, moneyHeight );
-			moneyIconX = armorEnd + (int)( 16 * scale );
-			moneyTextX = moneyIconX + moneyIconSize + moneyTextGap;
-		}
-
-		int panelRight = showMoney ? moneyTextX + moneyWidth + panelPadX : armorEnd + panelPadX;
+		int panelRight = armorEnd + panelPadX;
 		FillRGBABlend( 0, panelTop, panelRight, panelHeight, 0, 0, 0, 165 );
 
 		int iconY = contentBottom - numberHeight + ( numberHeight - iconSize ) / 2;
@@ -280,13 +264,24 @@ int CHudCsgo::Draw( float flTime )
 		CsDrawText( armorBuffer, armorTextX,
 			contentBottom - numberHeight, numberHeight, 238, 239, 240, 240 );
 
-		if( showMoney )
+		if( !( gHUD.m_iHideHUDDisplay & HIDEHUD_MONEY ) )
 		{
-			int moneyIconY = contentBottom - moneyHeight + ( moneyHeight - moneyIconSize ) / 2;
-			CsDrawIcon( s_iconCash, moneyIconX, moneyIconY, moneyIconSize,
+			sprintf( moneyBuffer, "%d", gHUD.m_Money.GetMoney() );
+
+			int moneyTextX = pad + iconSize + textGap;
+			int moneyWidth = CsTextWidth( moneyBuffer, numberHeight );
+			int moneyPanelRight = moneyTextX + moneyWidth + panelPadX;
+			int moneyPanelTop = panelTop - panelHeight - (int)( 6 * scale );
+			int moneyTextY = moneyPanelTop + panelPadY;
+			int moneyIconY = moneyTextY + ( numberHeight - iconSize ) / 2;
+
+			FillRGBABlend( 0, moneyPanelTop, moneyPanelRight, panelHeight,
+				0, 0, 0, 165 );
+
+			CsDrawIcon( s_iconCash, pad, moneyIconY, iconSize,
 				238, 239, 240, 245 );
-			CsDrawText( moneyBuffer, moneyTextX,
-				contentBottom - moneyHeight, moneyHeight, 238, 239, 240, 245 );
+			CsDrawText( moneyBuffer, moneyTextX, moneyTextY, numberHeight,
+				238, 239, 240, 245 );
 		}
 	}
 
