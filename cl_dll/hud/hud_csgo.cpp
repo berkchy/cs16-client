@@ -431,7 +431,7 @@ int CHudCsgo::Draw( float flTime )
 			int sideGap = (int)( 12 * scale );
 			int teamGap = (int)( 4 * scale );
 			int scoreHeight = (int)( 13 * scale );
-			int aliveHeight = (int)( 6 * scale );
+			int aliveHeight = (int)( 7 * scale );
 			int teamY = timerY + timerHeight + (int)( 10 * scale );
 			int scoreY = teamY + ( teamIconSize - scoreHeight ) / 2;
 			int aliveY = teamY + teamIconSize + (int)( 1 * scale );
