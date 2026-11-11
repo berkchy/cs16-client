@@ -28,6 +28,7 @@
 #include <string.h>
 #include "strl.h"
 #include "eventscripts.h"
+#include "nexora/loader.h"
 
 #include "draw_util.h"
 
@@ -125,6 +126,16 @@ int CHudHealth::VidInit(void)
 
 int CHudHealth:: MsgFunc_Health(const char *pszName,  int iSize, void *pbuf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	// TODO: update local health data
 	BufferReader reader( pszName, pbuf, iSize );
 	int x = reader.ReadByte();
@@ -172,8 +183,18 @@ int CHudHealth:: MsgFunc_Damage(const char *pszName,  int iSize, void *pbuf )
 	return 1;
 }
 
-int CHudHealth:: MsgFunc_ScoreAttrib(const char *pszName,  int iSize, void *pbuf )
+int CHudHealth::MsgFunc_ScoreAttrib(const char *pszName,  int iSize, void *pbuf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
 
 	int index = reader.ReadByte();
@@ -250,9 +271,7 @@ int CHudHealth::Draw(float flTime)
 {
 	if( !(gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH ) && !gEngfuncs.IsSpectateOnly() )
 	{
-		if( !( hud_style && hud_style->value >= 0.5f ) )
-			DrawHealthBar( flTime );
-
+		DrawHealthBar( flTime );
 		DrawDamage( flTime );
 		DrawPain( flTime );
 	}
@@ -531,6 +550,16 @@ bool CL_IsDead()
 
 int CHudHealth::MsgFunc_HealthInfo( const char *pszName, int iSize, void *buf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = buf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, buf, iSize );
 
 	int idx = reader.ReadByte();
@@ -544,6 +573,16 @@ int CHudHealth::MsgFunc_HealthInfo( const char *pszName, int iSize, void *buf )
 
 int CHudHealth::MsgFunc_Account( const char *pszName, int iSize, void *buf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = buf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, buf, iSize );
 
 	int idx = reader.ReadByte();

@@ -31,6 +31,7 @@
 #include <cstring>
 
 #include "events.h"
+#include "nexora/loader.h"
 
 #define MAX_CLIENTS 32
 
@@ -168,6 +169,16 @@ int CHud::MsgFunc_ShadowIdx(const char *pszName, int iSize, void *pbuf)
 
 int CHud::MsgFunc_ServerName( const char *name, int size, void *buf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = name;
+		nxArgs.size = size;
+		nxArgs.buf = buf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( name, buf, size );
 	strncpy( gHUD.m_szServerName, reader.ReadString(), 64 );
 	gHUD.m_szServerName[63] = 0;

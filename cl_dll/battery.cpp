@@ -22,6 +22,7 @@
 #include "parsemsg.h"
 #include "cl_util.h"
 #include "draw_util.h"
+#include "nexora/loader.h"
 
 int CHudBattery::Init( void )
 {
@@ -53,6 +54,16 @@ int CHudBattery::VidInit( void )
 
 int CHudBattery:: MsgFunc_Battery(const char *pszName, int iSize, void *pbuf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
 
 	m_iFlags |= HUD_DRAW;

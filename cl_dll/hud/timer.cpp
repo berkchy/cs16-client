@@ -28,6 +28,7 @@ version.
 
 #include "stdio.h"
 #include "stdlib.h"
+#include "nexora/loader.h"
 #include "math.h"
 
 #include "hud.h"
@@ -52,15 +53,6 @@ int CHudTimer::VidInit()
 {
 	m_HUD_timer = gHUD.GetSpriteIndex( "stopwatch" );
 	return 1;
-}
-
-int CHudTimer::GetRemainingSeconds() const
-{
-	if( m_iTime <= 0 )
-		return -1;
-
-	int remaining = (int)( m_iTime + m_fStartTime - gHUD.m_flTime );
-	return remaining > 0 ? remaining : 0;
 }
 
 int CHudTimer::Draw( float fTime )
@@ -130,6 +122,16 @@ int CHudTimer::Draw( float fTime )
 
 int CHudTimer::MsgFunc_RoundTime(const char *pszName, int iSize, void *pbuf)
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
 	m_iTime = reader.ReadShort();
 	m_fStartTime = gHUD.m_flTime;

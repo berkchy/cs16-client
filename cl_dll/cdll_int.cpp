@@ -36,6 +36,7 @@
 #include "environment.h"
 
 #include "cl_util.h"
+#include "nexora/loader.h"
 
 cl_enginefunc_t		gEngfuncs  = { };
 render_api_t		gRenderAPI = { };
@@ -112,6 +113,9 @@ int DLLEXPORT Initialize( cl_enginefunc_t *pEnginefuncs, int iVersion )
 
 	Game_HookEvents();
 	CL_LoadParticleMan();
+	NXPluginLoader_Init();
+
+	NXPluginLoader_Dispatch( NEXORA_HOOK_CLIENT_INIT, NULL );
 
 	return 1;
 }
@@ -125,6 +129,8 @@ HUD_Shutdown
 */
 void DLLEXPORT HUD_Shutdown( void )
 {
+	NXPluginLoader_Dispatch( NEXORA_HOOK_CLIENT_SHUTDOWN, NULL );
+
 	gHUD.Shutdown();
 	Input_Shutdown();
 	Localize_Free();
@@ -199,6 +205,11 @@ int	DLLEXPORT HUD_ConnectionlessPacket( const struct netadr_s *net_from, const c
 
 void DLLEXPORT HUD_PlayerMoveInit( struct playermove_s *ppmove )
 {
+	nexora_player_move_init_args_t args;
+
+	args.pmove = ppmove;
+	NXPluginLoader_Dispatch( NEXORA_HOOK_PLAYER_MOVE_INIT, &args );
+
 	PM_Init( ppmove );
 }
 
@@ -209,6 +220,12 @@ char DLLEXPORT HUD_PlayerMoveTexture( char *name )
 
 void DLLEXPORT HUD_PlayerMove( struct playermove_s *ppmove, int server )
 {
+	nexora_player_move_args_t args;
+
+	args.pmove = ppmove;
+	args.server = server;
+	NXPluginLoader_Dispatch( NEXORA_HOOK_PLAYER_MOVE, &args );
+
 	PM_Move( ppmove, server );
 }
 
@@ -283,6 +300,8 @@ void DLLEXPORT HUD_Init( void )
 		gEngfuncs.Con_Printf( "Warning: Menu initialization failed\n" );
 	}
 	//Scheme_Init();
+
+	NXPluginLoader_Dispatch( NEXORA_HOOK_CLIENT_CONNECT, NULL );
 }
 
 
@@ -297,7 +316,13 @@ redraw the HUD.
 
 int DLLEXPORT HUD_Redraw( float time, int intermission )
 {
+	nexora_redraw_args_t args;
+
+	args.time = time;
+	args.intermission = intermission;
+
 	gHUD.Redraw( time, intermission );
+	NXPluginLoader_Dispatch( NEXORA_HOOK_PAINT_HUD, &args );
 
 	return 1;
 }
@@ -318,6 +343,14 @@ returns 1 if anything has been changed, 0 otherwise.
 
 int DLLEXPORT HUD_UpdateClientData(client_data_t *pcldata, float flTime )
 {
+	nexora_update_client_data_args_t args;
+
+	args.client_data = pcldata;
+	args.time = flTime;
+	args.hide_hud = static_cast<int>( gHUD.m_iHideHUDDisplay );
+
+	NXPluginLoader_Dispatch( NEXORA_HOOK_UPDATE_CLIENT_DATA, &args );
+
 	IN_Commands();
 
 	return gHUD.UpdateClientData(pcldata, flTime );
@@ -333,6 +366,8 @@ Called at start and end of demos to restore to "non"HUD state.
 
 void DLLEXPORT HUD_Reset( void )
 {
+	NXPluginLoader_Dispatch( NEXORA_HOOK_CLIENT_RESET, NULL );
+
 	gHUD.Reset();
 }
 
@@ -362,6 +397,13 @@ void DLLEXPORT HUD_Frame( double time )
 	}
 
 	GetClientVoice()->Frame( time );
+
+	{
+		nexora_frame_args_t args;
+
+		args.time = time;
+		NXPluginLoader_Dispatch( NEXORA_HOOK_FRAME, &args );
+	}
 }
 
 

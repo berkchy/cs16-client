@@ -44,7 +44,6 @@ cvar_t *cl_fog_r;
 cvar_t *cl_fog_g;
 cvar_t *cl_fog_b;
 cvar_t *cl_fog_density;
-cvar_t *hud_style;
 
 extern client_sprite_t *GetSpriteList(client_sprite_t *pList, const char *psz, int iRes, int iCount);
 
@@ -339,7 +338,6 @@ void CHud :: Init( void )
 	cl_min_ct    = CVAR_CREATE( "cl_min_ct", "2", FCVAR_ARCHIVE );
 	default_fov  = CVAR_CREATE( "default_fov", "90", 0 );
 	m_pCvarDraw  = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
-	hud_style    = CVAR_CREATE( "hud_style", "0", FCVAR_ARCHIVE );
 	fastsprites  = CVAR_CREATE( "fastsprites", "0", FCVAR_ARCHIVE );
 	cl_gunsmoke  = CVAR_CREATE( "cl_gunsmoke", "0", FCVAR_ARCHIVE );
 	cl_weapon_sparks = CVAR_CREATE( "cl_weapon_sparks", "1", FCVAR_ARCHIVE );
@@ -399,7 +397,6 @@ void CHud :: Init( void )
 	m_Radio.Init();
 	m_Timer.Init();
 	m_Money.Init();
-	m_Csgo.Init();
 	m_AmmoSecondary.Init();
 	m_Train.Init();
 	m_Battery.Init();

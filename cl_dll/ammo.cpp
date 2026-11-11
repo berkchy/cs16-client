@@ -34,6 +34,7 @@
 #include "draw_util.h"
 #include "triangleapi.h"
 #include "weapontype.h"
+#include "nexora/loader.h"
 
 #ifndef M_PI
 #define M_PI		3.14159265358979323846	// matches value in gcc v2 math.h
@@ -1046,6 +1047,30 @@ void CHudAmmo::UserCmd_Rebuy()
 
 int CHudAmmo::Draw(float flTime)
 {
+	{
+		nexora_ammo_args_t nxArgs;
+
+		if ( m_pWeapon )
+		{
+			const char *name = m_pWeapon->szName;
+
+			if ( name && !strncmp( name, "weapon_", 7 ) )
+				name += 7;
+
+			nxArgs.clip = m_pWeapon->iClip;
+			nxArgs.reserve = m_pWeapon->iAmmoType > 0 ? gWR.CountAmmo( m_pWeapon->iAmmoType ) : -1;
+			nxArgs.weapon_name = name ? name : "";
+		}
+		else
+		{
+			nxArgs.clip = -1;
+			nxArgs.reserve = -1;
+			nxArgs.weapon_name = "";
+		}
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_AMMO_INFO, &nxArgs );
+	}
+
 	int a, x, y, r, g, b;
 	int AmmoWidth;
 
@@ -1072,9 +1097,6 @@ int CHudAmmo::Draw(float flTime)
 		return 1;
 
 	if( gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL ) )
-		return 1;
-
-	if( hud_style && hud_style->value >= 0.5f )
 		return 1;
 
 	// Draw Weapon Menu
@@ -1170,27 +1192,6 @@ int CHudAmmo::Draw(float flTime)
 	}
 
 	return 1;
-}
-
-bool CHudAmmo::GetAmmoInfo( int &clip, int &reserve, char *name, int nameSize ) const
-{
-	if( !m_pWeapon )
-		return false;
-
-	clip = m_pWeapon->iClip;
-	reserve = m_pWeapon->iAmmoType > 0 ? gWR.CountAmmo( m_pWeapon->iAmmoType ) : -1;
-
-	if( name && nameSize > 0 )
-	{
-		const char *weaponName = m_pWeapon->szName;
-		if( !strncmp( weaponName, "weapon_", 7 ) )
-			weaponName += 7;
-
-		strncpy( name, weaponName, nameSize - 1 );
-		name[nameSize - 1] = 0;
-	}
-
-	return true;
 }
 
 void CHudAmmo::DrawSpriteCrosshair()

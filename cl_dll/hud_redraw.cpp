@@ -23,8 +23,7 @@
 #include <string.h>
 
 #include "draw_util.h"
-
-extern float g_flScoreboardFade;
+#include "nexora/loader.h"
 
 #define MAX_LOGO_FRAMES 56
 
@@ -37,6 +36,41 @@ int grgLogoFrame[MAX_LOGO_FRAMES] =
 
 
 extern int g_iVisibleMouse;
+
+static const char *NXHudElementName( CHudBase *element )
+{
+	if ( !element )
+		return "unknown";
+
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Ammo ) ) return "ammo";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Health ) ) return "health";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Spectator ) ) return "spectator";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Geiger ) ) return "geiger";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Battery ) ) return "battery";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Train ) ) return "train";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Flash ) ) return "flashlight";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Message ) ) return "message";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_StatusBar ) ) return "statusbar";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_DeathNotice ) ) return "deathnotice";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_SayText ) ) return "saytext";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Menu ) ) return "menu";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_AmmoSecondary ) ) return "ammosecondary";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_TextMessage ) ) return "textmessage";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_StatusIcons ) ) return "statusicons";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Scoreboard ) ) return "scoreboard";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_MOTD ) ) return "motd";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Money ) ) return "money";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Timer ) ) return "timer";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Radio ) ) return "radio";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_ProgressBar ) ) return "progressbar";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_SniperScope ) ) return "sniperscope";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_NVG ) ) return "nvg";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Radar ) ) return "radar";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_SpectatorGui ) ) return "spectator_gui";
+	if ( element == static_cast<CHudBase *>( &gHUD.m_Scenario ) ) return "scenario";
+
+	return "unknown";
+}
 
 float HUD_GetFOV( void );
 
@@ -104,28 +138,29 @@ int CHud :: Redraw( float flTime, int intermission )
 
 	UpdateDefaultHUDColor();
 
-	const bool hideForScoreboard = g_flScoreboardFade > 0.001f;
-	const bool csgoHud = hud_style && hud_style->value >= 0.5f;
-
 	if ( m_pCvarDraw->value && (intermission || !(m_iHideHUDDisplay & HIDEHUD_ALL) ) )
 	{
 		for( HUDLIST *pList = m_pHudList; pList; pList = pList->pNext )
 		{
 			if( pList->p->m_iFlags & HUD_DRAW )
 			{
-				if( intermission && !(pList->p->m_iFlags & HUD_INTERMISSION) )
-					continue; // skip no-intermission during intermission
+					if( intermission && !(pList->p->m_iFlags & HUD_INTERMISSION) )
+						continue; // skip no-intermission during intermission
 
-				if( hideForScoreboard && pList->p != static_cast<CHudBase *>( &m_Scoreboard ) )
-					continue;
+					{
+						nexora_hud_element_args_t nxArgs;
 
-				if( csgoHud && ( pList->p == static_cast<CHudBase *>( &m_Battery )
-					|| pList->p == static_cast<CHudBase *>( &m_Money )
-					|| pList->p == static_cast<CHudBase *>( &m_Timer )
-					|| pList->p == static_cast<CHudBase *>( &m_AmmoSecondary ) ) )
-					continue;
+						nxArgs.element = pList->p;
+						nxArgs.name = NXHudElementName( pList->p );
+						nxArgs.allow = 1;
 
-				pList->p->Draw( flTime );
+						NXPluginLoader_Dispatch( NEXORA_HOOK_HUD_ELEMENT_DRAW, &nxArgs );
+
+						if ( !nxArgs.allow )
+							continue;
+					}
+
+					pList->p->Draw( flTime );
 			}
 		}
 	}

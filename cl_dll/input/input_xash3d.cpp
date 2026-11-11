@@ -4,6 +4,7 @@
 #include "kbutton.h"
 #include "keydefs.h"
 #include "input.h"
+#include "nexora/loader.h"
 
 #define	PITCH	0
 #define	YAW		1
@@ -260,7 +261,7 @@ void DLLEXPORT IN_Accumulate ( void )
 
 void IN_Commands ( void )
 {
-	//gEngfuncs.Con_Printf("IN_Commands\n");
+	NXPluginLoader_Dispatch( NEXORA_HOOK_IN_COMMANDS, NULL );
 }
 
 void IN_Shutdown ( void )

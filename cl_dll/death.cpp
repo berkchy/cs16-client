@@ -23,22 +23,18 @@
 #include <stdio.h>
 #include "draw_util.h"
 #include "strl.h"
-#include "triangleapi.h"
-#include "screenfade.h"
-#include "shake.h"
+#include "nexora/loader.h"
 
 float color[3];
 
 struct DeathNoticeItem {
 	char szKiller[MAX_PLAYER_NAME_LENGTH*2];
 	char szVictim[MAX_PLAYER_NAME_LENGTH*2];
-	char szWeapon[32];
 	int iId;	// the index number of the associated sprite
 	bool bSuicide;
 	bool bTeamKill;
 	bool bNonPlayerKill;
 	float flDisplayTime;
-	float flSpawnTime;
 	float *KillerColor;
 	float *VictimColor;
 	int iHeadShotId;
@@ -51,278 +47,6 @@ static int DEATHNOTICE_DISPLAY_TIME = 6;
 
 DeathNoticeItem rgDeathNoticeList[ MAX_DEATHNOTICES + 1 ];
 
-struct KillFeedIcon
-{
-	const char *path;
-	int texture;
-	bool attempted;
-};
-
-static KillFeedIcon kfHeadshot = { "gfx/scoreboard/headshot.png", 0, false };
-
-cvar_t *hud_killfeed_fade;
-cvar_t *hud_killfeed_fadein;
-cvar_t *hud_killfeed_fadeout;
-cvar_t *hud_killfeed_fxtime;
-cvar_t *hud_killfeed_holdtime;
-cvar_t *hud_killfeed_color;
-cvar_t *hud_killfeed_alpha;
-cvar_t *hud_killfeed_bgcolor;
-cvar_t *hud_killfeed_bgalpha;
-cvar_t *hud_killfeed_rowspacing;
-cvar_t *hud_killfade;
-cvar_t *hud_killfade_fadein;
-cvar_t *hud_killfade_fadeout;
-cvar_t *hud_killfade_fxtime;
-cvar_t *hud_killfade_holdtime;
-cvar_t *hud_killfade_color;
-cvar_t *hud_killfade_alpha;
-
-static void KfDrawIcon( KillFeedIcon &icon, int x, int y, int size,
-	int r, int g, int b, int a )
-{
-	if( !icon.attempted )
-	{
-		icon.attempted = true;
-		icon.texture = gRenderAPI.GL_LoadTexture( icon.path, NULL, 0,
-			TF_NEAREST | TF_NOMIPMAP | TF_CLAMP );
-	}
-
-	if( !icon.texture )
-		return;
-
-	gRenderAPI.GL_SelectTexture( 0 );
-	gRenderAPI.GL_Bind( 0, icon.texture );
-	gEngfuncs.pTriAPI->RenderMode( kRenderTransAlpha );
-	gEngfuncs.pTriAPI->Color4f( r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f );
-	DrawUtils::Draw2DQuad( (float)x, (float)y, (float)( x + size ), (float)( y + size ) );
-}
-
-static void KfParseColor( const char *value, int &r, int &g, int &b )
-{
-	r = g = b = 255;
-	if( value && value[0] )
-		sscanf( value, "%d %d %d", &r, &g, &b );
-	r = max( 0, min( 255, r ) );
-	g = max( 0, min( 255, g ) );
-	b = max( 0, min( 255, b ) );
-}
-
-static float kfScreenFadeOutAt = -1.0f;
-
-static void KfApplyScreenFade( float duration, float hold, int flags,
-	int r, int g, int b, int a )
-{
-	if( !gEngfuncs.pfnSetScreenFade || duration <= 0.0f || a <= 0 )
-		return;
-
-	screenfade_t fade;
-	memset( &fade, 0, sizeof( fade ) );
-
-	float now = gEngfuncs.GetClientTime();
-	fade.fader = (byte)r;
-	fade.fadeg = (byte)g;
-	fade.fadeb = (byte)b;
-	fade.fadealpha = (byte)a;
-	fade.fadeFlags = flags;
-	fade.fadeEnd = duration;
-	fade.fadeReset = hold;
-
-	if( flags & FFADE_OUT )
-	{
-		fade.fadeSpeed = -(float)a / fade.fadeEnd;
-		fade.fadeEnd += now;
-		fade.fadeReset += fade.fadeEnd;
-	}
-	else
-	{
-		fade.fadeSpeed = (float)a / fade.fadeEnd;
-		fade.fadeReset += now;
-		fade.fadeEnd += fade.fadeReset;
-	}
-
-	gEngfuncs.pfnSetScreenFade( &fade );
-}
-
-static void KfStartScreenFade( void )
-{
-	if( !hud_killfade || hud_killfade->value < 0.5f || !gEngfuncs.pfnSetScreenFade )
-		return;
-
-	int r, g, b;
-	KfParseColor( hud_killfade_color ? hud_killfade_color->string : NULL, r, g, b );
-
-	int a = hud_killfade_alpha ? (int)hud_killfade_alpha->value : 70;
-	a = max( 0, min( 255, a ) );
-	if( a <= 0 )
-		return;
-
-	float fxTime = hud_killfade_fxtime ? hud_killfade_fxtime->value : 0.25f;
-	fxTime = max( 0.02f, min( 2.0f, fxTime ) );
-
-	float hold = hud_killfade_holdtime ? hud_killfade_holdtime->value : 0.12f;
-	hold = max( 0.0f, min( 2.0f, hold ) );
-
-	bool fadeIn = hud_killfade_fadein && hud_killfade_fadein->value >= 0.5f;
-	bool fadeOut = hud_killfade_fadeout && hud_killfade_fadeout->value >= 0.5f;
-
-	kfScreenFadeOutAt = -1.0f;
-
-	if( fadeIn )
-	{
-		KfApplyScreenFade( fxTime, hold, FFADE_OUT, r, g, b, a );
-		if( fadeOut )
-			kfScreenFadeOutAt = gEngfuncs.GetClientTime() + fxTime + hold - 0.02f;
-	}
-	else if( fadeOut )
-	{
-		KfApplyScreenFade( fxTime, hold, FFADE_IN, r, g, b, a );
-	}
-}
-
-static void KfUpdateScreenFade( void )
-{
-	if( kfScreenFadeOutAt < 0.0f )
-		return;
-
-	if( gEngfuncs.GetClientTime() < kfScreenFadeOutAt )
-		return;
-
-	kfScreenFadeOutAt = -1.0f;
-
-	int r, g, b;
-	KfParseColor( hud_killfade_color ? hud_killfade_color->string : NULL, r, g, b );
-
-	int a = hud_killfade_alpha ? (int)hud_killfade_alpha->value : 70;
-	a = max( 0, min( 255, a ) );
-
-	float fxTime = hud_killfade_fxtime ? hud_killfade_fxtime->value : 0.25f;
-	fxTime = max( 0.02f, min( 2.0f, fxTime ) );
-
-	KfApplyScreenFade( fxTime, 0.0f, FFADE_IN, r, g, b, a );
-}
-
-static void KfDrawNotice( DeathNoticeItem &item, int index, float flTime )
-{
-	int scale = (int)( ScreenHeight / 480.0f );
-	if( scale < 1 ) scale = 1;
-	if( scale > 2 ) scale = 2;
-
-	const int pad = 10 * scale;
-	const int rowHeight = 18 * scale;
-	const int iconSize = 14 * scale;
-	const int hsSize = 10 * scale;
-	const int gap = 4 * scale;
-	const int top = 48 * scale;
-	int rowSpacing = hud_killfeed_rowspacing ? (int)( hud_killfeed_rowspacing->value * scale ) : 4 * scale;
-	rowSpacing = max( 0, min( 32 * scale, rowSpacing ) );
-	const int y = top + index * ( rowHeight + rowSpacing );
-
-	int weaponId = item.iId >= 0 ? item.iId : gHUD.GetSpriteIndex( "d_skull" );
-	wrect_t *weaponRect = weaponId >= 0 ? &gHUD.GetSpriteRect( weaponId ) : NULL;
-	if( weaponRect && ( weaponRect->Width() <= 0 || weaponRect->Height() <= 0 ) )
-		weaponRect = NULL;
-	int weaponWidth = weaponRect ? weaponRect->Width() : iconSize;
-	int weaponHeight = weaponRect ? weaponRect->Height() : iconSize;
-	int killerWidth = item.szKiller[0] ? DrawUtils::ConsoleStringLen( item.szKiller ) : 0;
-	int victimWidth = item.szVictim[0] ? DrawUtils::ConsoleStringLen( item.szVictim ) : 0;
-	bool showHeadshot = item.iHeadShotId != 0;
-
-	float fade = 1.0f;
-	if( hud_killfeed_fade && hud_killfeed_fade->value >= 0.5f )
-	{
-		float fxTime = hud_killfeed_fxtime ? hud_killfeed_fxtime->value : 0.25f;
-		fxTime = max( 0.05f, min( 2.0f, fxTime ) );
-
-		float elapsed = flTime - item.flSpawnTime;
-		float remaining = item.flDisplayTime - flTime;
-
-		if( hud_killfeed_fadein && hud_killfeed_fadein->value >= 0.5f && elapsed < fxTime )
-			fade = min( fade, elapsed / fxTime );
-		if( hud_killfeed_fadeout && hud_killfeed_fadeout->value >= 0.5f && remaining < fxTime )
-			fade = min( fade, remaining / fxTime );
-	}
-
-	if( fade < 0.0f ) fade = 0.0f;
-	if( fade > 1.0f ) fade = 1.0f;
-
-	int textBaseAlpha = hud_killfeed_alpha ? (int)hud_killfeed_alpha->value : 235;
-	textBaseAlpha = max( 0, min( 255, textBaseAlpha ) );
-	int bgBaseAlpha = hud_killfeed_bgalpha ? (int)hud_killfeed_bgalpha->value : 110;
-	bgBaseAlpha = max( 0, min( 255, bgBaseAlpha ) );
-
-	float textAlpha = ( textBaseAlpha / 255.0f ) * fade;
-	int bgAlpha = (int)( bgBaseAlpha * fade );
-
-	int right = ScreenWidth - pad;
-	int x = right;
-	if( victimWidth > 0 )
-		x -= victimWidth;
-	if( showHeadshot )
-		x -= gap + hsSize;
-	x -= gap + weaponWidth;
-	if( killerWidth > 0 )
-		x -= gap + killerWidth;
-
-	int left = x - pad;
-	int width = right - left;
-
-	int bgR, bgG, bgB;
-	KfParseColor( hud_killfeed_bgcolor ? hud_killfeed_bgcolor->string : NULL, bgR, bgG, bgB );
-	if( bgAlpha > 0 )
-		FillRGBABlend( left, y - 2 * scale, width, rowHeight + 2 * scale,
-			bgR, bgG, bgB, bgAlpha );
-
-	int cfgR, cfgG, cfgB;
-	bool useConfigColor = hud_killfeed_color && hud_killfeed_color->string[0];
-	if( useConfigColor )
-		KfParseColor( hud_killfeed_color->string, cfgR, cfgG, cfgB );
-
-	x = right;
-	if( victimWidth > 0 )
-	{
-		x -= victimWidth;
-		if( useConfigColor )
-			DrawUtils::SetConsoleTextColor( ( cfgR / 255.0f ) * textAlpha,
-				( cfgG / 255.0f ) * textAlpha, ( cfgB / 255.0f ) * textAlpha );
-		else if( item.VictimColor )
-			DrawUtils::SetConsoleTextColor( item.VictimColor[0] * textAlpha,
-				item.VictimColor[1] * textAlpha, item.VictimColor[2] * textAlpha );
-		else
-			DrawUtils::SetConsoleTextColor( 0.92f * textAlpha, 0.92f * textAlpha, 0.92f * textAlpha );
-		DrawUtils::DrawConsoleString( x, y, item.szVictim );
-	}
-
-	if( showHeadshot )
-	{
-		x -= gap + hsSize;
-		KfDrawIcon( kfHeadshot, x, y + 1 * scale, hsSize, 238, 239, 240, (int)( 235 * fade ) );
-	}
-
-	x -= gap + weaponWidth;
-	if( weaponRect )
-	{
-		int weaponTint = (int)( 255 * textAlpha );
-		int weaponY = y + ( rowHeight - weaponHeight ) / 2;
-		SPR_Set( gHUD.GetSprite( weaponId ), weaponTint, weaponTint, weaponTint );
-		SPR_DrawAdditive( 0, x, weaponY, weaponRect );
-	}
-
-	if( killerWidth > 0 )
-	{
-		x -= gap + killerWidth;
-		if( useConfigColor )
-			DrawUtils::SetConsoleTextColor( ( cfgR / 255.0f ) * textAlpha,
-				( cfgG / 255.0f ) * textAlpha, ( cfgB / 255.0f ) * textAlpha );
-		else if( item.KillerColor )
-			DrawUtils::SetConsoleTextColor( item.KillerColor[0] * textAlpha,
-				item.KillerColor[1] * textAlpha, item.KillerColor[2] * textAlpha );
-		else
-			DrawUtils::SetConsoleTextColor( 0.92f * textAlpha, 0.92f * textAlpha, 0.92f * textAlpha );
-		DrawUtils::DrawConsoleString( x, y, item.szKiller );
-	}
-}
-
 cvar_t *cl_killsound;
 cvar_t *cl_killsound_path;
 
@@ -333,23 +57,6 @@ int CHudDeathNotice :: Init( void )
 	HOOK_MESSAGE( gHUD.m_DeathNotice, DeathMsg );
 
 	hud_deathnotice_time = CVAR_CREATE( "hud_deathnotice_time", "6", FCVAR_ARCHIVE );
-	hud_killfeed_fade = CVAR_CREATE( "hud_killfeed_fade", "1", FCVAR_ARCHIVE );
-	hud_killfeed_fadein = CVAR_CREATE( "hud_killfeed_fadein", "1", FCVAR_ARCHIVE );
-	hud_killfeed_fadeout = CVAR_CREATE( "hud_killfeed_fadeout", "1", FCVAR_ARCHIVE );
-	hud_killfeed_fxtime = CVAR_CREATE( "hud_killfeed_fxtime", "0.25", FCVAR_ARCHIVE );
-	hud_killfeed_holdtime = CVAR_CREATE( "hud_killfeed_holdtime", "5", FCVAR_ARCHIVE );
-	hud_killfeed_color = CVAR_CREATE( "hud_killfeed_color", "", FCVAR_ARCHIVE );
-	hud_killfeed_alpha = CVAR_CREATE( "hud_killfeed_alpha", "235", FCVAR_ARCHIVE );
-	hud_killfeed_bgcolor = CVAR_CREATE( "hud_killfeed_bgcolor", "0 0 0", FCVAR_ARCHIVE );
-	hud_killfeed_bgalpha = CVAR_CREATE( "hud_killfeed_bgalpha", "110", FCVAR_ARCHIVE );
-	hud_killfeed_rowspacing = CVAR_CREATE( "hud_killfeed_rowspacing", "4", FCVAR_ARCHIVE );
-	hud_killfade = CVAR_CREATE( "hud_killfade", "1", FCVAR_ARCHIVE );
-	hud_killfade_fadein = CVAR_CREATE( "hud_killfade_fadein", "1", FCVAR_ARCHIVE );
-	hud_killfade_fadeout = CVAR_CREATE( "hud_killfade_fadeout", "1", FCVAR_ARCHIVE );
-	hud_killfade_fxtime = CVAR_CREATE( "hud_killfade_fxtime", "0.25", FCVAR_ARCHIVE );
-	hud_killfade_holdtime = CVAR_CREATE( "hud_killfade_holdtime", "0.12", FCVAR_ARCHIVE );
-	hud_killfade_color = CVAR_CREATE( "hud_killfade_color", "255 255 255", FCVAR_ARCHIVE );
-	hud_killfade_alpha = CVAR_CREATE( "hud_killfade_alpha", "70", FCVAR_ARCHIVE );
 	cl_killsound = CVAR_CREATE( "cl_killsound", "0", FCVAR_ARCHIVE );
 	cl_killsound_path = CVAR_CREATE( "cl_killsound_path", "buttons/bell1.wav", FCVAR_ARCHIVE );
 	m_iFlags = 0;
@@ -375,9 +82,6 @@ int CHudDeathNotice :: VidInit( void )
 int CHudDeathNotice :: Draw( float flTime )
 {
 	int x, y, r, g, b, i;
-	const bool csgoKillfeed = hud_style && hud_style->value >= 0.5f;
-
-	KfUpdateScreenFade();
 
 	for( i = 0; i < MAX_DEATHNOTICES; i++ )
 	{
@@ -392,16 +96,7 @@ int CHudDeathNotice :: Draw( float flTime )
 			continue;
 		}
 
-		float maxDisplay = DEATHNOTICE_DISPLAY_TIME;
-		if( csgoKillfeed && hud_killfeed_holdtime )
-			maxDisplay = max( maxDisplay, hud_killfeed_holdtime->value );
-		rgDeathNoticeList[i].flDisplayTime = min( rgDeathNoticeList[i].flDisplayTime, flTime + maxDisplay );
-
-		if( csgoKillfeed )
-		{
-			KfDrawNotice( rgDeathNoticeList[i], i, flTime );
-			continue;
-		}
+		rgDeathNoticeList[i].flDisplayTime = min( rgDeathNoticeList[i].flDisplayTime, flTime + DEATHNOTICE_DISPLAY_TIME );
 
 		// Hide when scoreboard drawing. It will break triapi
 		//if ( gViewPort && gViewPort->AllowedToPrintText() )
@@ -499,10 +194,6 @@ int CHudDeathNotice :: MsgFunc_DeathMsg( const char *pszName, int iSize, void *p
 		i = MAX_DEATHNOTICES - 1;
 	}
 
-	memset( &rgDeathNoticeList[i], 0, sizeof( DeathNoticeItem ) );
-	strlcpy( rgDeathNoticeList[i].szWeapon, killedwith + 2, sizeof( rgDeathNoticeList[i].szWeapon ) );
-	rgDeathNoticeList[i].flSpawnTime = gHUD.m_flTime;
-
 	//if (gViewPort)
 		//gViewPort->GetAllPlayersInfo();
 	gHUD.m_Scoreboard.GetAllPlayersInfo();
@@ -569,20 +260,7 @@ int CHudDeathNotice :: MsgFunc_DeathMsg( const char *pszName, int iSize, void *p
 
 	rgDeathNoticeList[i].iId = spr;
 
-	float holdTime = hud_deathnotice_time->value;
-	if( hud_style && hud_style->value >= 0.5f && hud_killfeed_holdtime )
-		holdTime = hud_killfeed_holdtime->value;
-	if( holdTime < 0.5f )
-		holdTime = 0.5f;
-	rgDeathNoticeList[i].flDisplayTime = gHUD.m_flTime + holdTime;
-
-	if ((killer_this_player || g_iUser2 == killer) &&
-		!rgDeathNoticeList[i].bNonPlayerKill &&
-		!rgDeathNoticeList[i].bSuicide &&
-		!rgDeathNoticeList[i].bTeamKill)
-	{
-		KfStartScreenFade();
-	}
+	rgDeathNoticeList[i].flDisplayTime = gHUD.m_flTime + hud_deathnotice_time->value;
 
 	// Play kill sound
 	if ((killer_this_player || g_iUser2 == killer) &&
@@ -643,6 +321,32 @@ int CHudDeathNotice :: MsgFunc_DeathMsg( const char *pszName, int iSize, void *p
 
 		if( headshot ) ConsolePrint( " ***");
 		ConsolePrint( "\n" );
+	}
+
+	{
+		bool victim_this_player = false;
+
+		if ( victim >= 1 && victim <= MAX_PLAYERS )
+			victim_this_player = g_PlayerInfoList[ victim ].thisplayer != 0;
+
+		nexora_deathmsg_args_t nxArgs;
+
+		nxArgs.killer = killer;
+		nxArgs.victim = victim;
+		nxArgs.headshot = headshot;
+		nxArgs.weapon = killedwith;
+		nxArgs.killer_name = killer_name ? killer_name : "";
+		nxArgs.victim_name = victim_name ? victim_name : "";
+		nxArgs.killer_team = killer >= 1 && killer <= MAX_PLAYERS ? g_PlayerExtraInfo[ killer ].teamnumber : -1;
+		nxArgs.victim_team = victim >= 1 && victim <= MAX_PLAYERS ? g_PlayerExtraInfo[ victim ].teamnumber : -1;
+		nxArgs.killer_is_local = ( killer_this_player || g_iUser2 == killer ) ? 1 : 0;
+		nxArgs.victim_is_local = victim_this_player ? 1 : 0;
+		nxArgs.is_suicide = rgDeathNoticeList[i].bSuicide ? 1 : 0;
+		nxArgs.is_teamkill = rgDeathNoticeList[i].bTeamKill ? 1 : 0;
+		nxArgs.is_nonplayer_kill = rgDeathNoticeList[i].bNonPlayerKill ? 1 : 0;
+		nxArgs.time = gHUD.m_flTime;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_DEATHMSG, &nxArgs );
 	}
 
 	return 1;

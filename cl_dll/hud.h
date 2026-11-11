@@ -108,7 +108,6 @@ extern cvar_t *cl_fog_r;
 extern cvar_t *cl_fog_g;
 extern cvar_t *cl_fog_b;
 extern cvar_t *cl_fog_density;
-extern cvar_t *hud_style;
 
 struct FogParameters {
 	float color[3];
@@ -212,8 +211,6 @@ public:
 	CHudUserCmd(Adjust_Crosshair);
 	CHudUserCmd(Rebuy);
 	CHudUserCmd(Autobuy);
-
-	bool GetAmmoInfo( int &clip, int &reserve, char *name, int nameSize ) const;
 
 private:
 	float m_fFade;
@@ -371,7 +368,6 @@ public:
 	int Draw( float flTime );
 
 	int DrawScoreboard( float flTime );
-	int DrawScoreboard2( float flTime );
 	int DrawTeams( float listslot );
 	int DrawPlayers( float listslot, int nameoffset = 0, const char *team = NULL ); // returns the ypos where it finishes drawing
 
@@ -385,7 +381,6 @@ public:
 	CHudUserCmd(HideScores);
 	CHudUserCmd(ShowScoreboard2);
 	CHudUserCmd(HideScoreboard2);
-	CHudUserCmd(ToggleScoreboard);
 
 	CHudMsgFunc(ScoreInfo);
 	CHudMsgFunc(TeamInfo);
@@ -406,15 +401,6 @@ private:
 	cvar_t *cl_showpacketloss;
 	cvar_t *cl_showplayerversion;
 	cvar_t *cl_show_scoreboard_on_death;
-	cvar_t *cl_scoreboard_style;
-	cvar_t *cl_scoreboard_alpha;
-	cvar_t *cl_scoreboard_show_money;
-	cvar_t *cl_scoreboard_show_hp;
-	cvar_t *cl_scoreboard_show_ping;
-	cvar_t *cl_scoreboard_show_flags;
-	cvar_t *cl_scoreboard_high_contrast;
-	cvar_t *cl_scoreboard_fadein;
-	cvar_t *cl_scoreboard_fadeout;
 };
 
 //
@@ -599,7 +585,6 @@ public:
 	int Draw(float flTime);
 	CHudMsgFunc(Battery);
 	CHudMsgFunc(ArmorType);
-	int GetArmor() const { return m_iBat; }
 	
 private:
 	enum armortype_t {
@@ -778,7 +763,6 @@ public:
 	int Draw( float flTime );
 	CHudMsgFunc(Money);
 	CHudMsgFunc(BlinkAcct);
-	int GetMoney() const { return m_iMoneyCount; }
 
 private:
 	int m_iMoneyCount;
@@ -817,7 +801,6 @@ public:
 	int Init( void );
 	int VidInit( void );
 	int Draw(float fTime);
-	int GetRemainingSeconds() const;
 	// set up the timer.
 	// [short]
 	CHudMsgFunc(RoundTime);
@@ -833,16 +816,6 @@ private:
 	bool m_bPanicColorChange;
 	float m_flPanicTime;
 };
-//
-//-----------------------------------------------------
-//
-class CHudCsgo: public CHudBase
-{
-public:
-	int Init( void );
-	int Draw( float flTime );
-};
-
 //
 //-----------------------------------------------------
 //
@@ -1109,7 +1082,6 @@ public:
 	CHudMOTD        m_MOTD;
 	CHudMoney       m_Money;
 	CHudTimer       m_Timer;
-	CHudCsgo        m_Csgo;
 	CHudRadio       m_Radio;
 	CHudProgressBar m_ProgressBar;
 	CHudSniperScope m_SniperScope;

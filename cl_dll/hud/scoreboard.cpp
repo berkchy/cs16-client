@@ -29,9 +29,7 @@
 #include "draw_util.h"
 #include "vgui_parser.h"
 #include "eventscripts.h"
-
-float g_flScoreboardFade = 1.0f;
-static float s_flScoreboardLastTime = -1.0f;
+#include "nexora/loader.h"
 
 hud_player_info_t   g_PlayerInfoList[MAX_PLAYERS+1]; // player info from the engine
 extra_player_info_t	g_PlayerExtraInfo[MAX_PLAYERS+1]; // additional player info sent directly to the client dll
@@ -98,8 +96,6 @@ int CHudScoreboard :: Init( void )
 	// Hook messages & commands here
 	HOOK_COMMAND( gHUD.m_Scoreboard, "+showscores", ShowScores );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "-showscores", HideScores );
-	HOOK_COMMAND( gHUD.m_Scoreboard, "scoreboard", ToggleScoreboard );
-	HOOK_COMMAND( gHUD.m_Scoreboard, "scoreboard2", ToggleScoreboard );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "showscoreboard2", ShowScoreboard2 );
 	HOOK_COMMAND( gHUD.m_Scoreboard, "hidescoreboard2", HideScoreboard2 );
 
@@ -112,15 +108,6 @@ int CHudScoreboard :: Init( void )
 	cl_showpacketloss = CVAR_CREATE( "cl_showpacketloss", "0", FCVAR_ARCHIVE );
 	cl_showplayerversion = CVAR_CREATE( "cl_showplayerversion", "0", 0 );
 	cl_show_scoreboard_on_death = CVAR_CREATE( "cl_show_scoreboard_on_death", "0", FCVAR_ARCHIVE );
-	cl_scoreboard_style = CVAR_CREATE( "cl_scoreboard_style", "2", FCVAR_ARCHIVE );
-	cl_scoreboard_alpha = CVAR_CREATE( "cl_scoreboard_alpha", "220", FCVAR_ARCHIVE );
-	cl_scoreboard_show_money = CVAR_CREATE( "cl_scoreboard_show_money", "1", FCVAR_ARCHIVE );
-	cl_scoreboard_show_hp = CVAR_CREATE( "cl_scoreboard_show_hp", "1", FCVAR_ARCHIVE );
-	cl_scoreboard_show_ping = CVAR_CREATE( "cl_scoreboard_show_ping", "1", FCVAR_ARCHIVE );
-	cl_scoreboard_show_flags = CVAR_CREATE( "cl_scoreboard_show_flags", "1", FCVAR_ARCHIVE );
-	cl_scoreboard_high_contrast = CVAR_CREATE( "cl_scoreboard_high_contrast", "0", FCVAR_ARCHIVE );
-	cl_scoreboard_fadein = CVAR_CREATE( "cl_scoreboard_fadein", "0.15", FCVAR_ARCHIVE );
-	cl_scoreboard_fadeout = CVAR_CREATE( "cl_scoreboard_fadeout", "0.18", FCVAR_ARCHIVE );
 
 	return 1;
 }
@@ -182,39 +169,8 @@ bool CHudScoreboard :: ShouldDrawScoreboard() const
 
 int CHudScoreboard :: Draw( float flTime )
 {
-	bool shouldDraw = ShouldDrawScoreboard();
-
-	float fadeIn = cl_scoreboard_fadein ? cl_scoreboard_fadein->value : 0.15f;
-	float fadeOut = cl_scoreboard_fadeout ? cl_scoreboard_fadeout->value : 0.18f;
-	if( fadeIn < 0.0f ) fadeIn = 0.0f;
-	if( fadeOut < 0.0f ) fadeOut = 0.0f;
-
-	float delta = s_flScoreboardLastTime >= 0.0f ? flTime - s_flScoreboardLastTime : 0.0f;
-	s_flScoreboardLastTime = flTime;
-	if( delta < 0.0f || delta > 0.5f )
-		delta = 0.0f;
-
-	if( shouldDraw )
-	{
-		if( fadeIn <= 0.001f )
-			g_flScoreboardFade = 1.0f;
-		else
-			g_flScoreboardFade += delta / fadeIn;
-		if( g_flScoreboardFade > 1.0f )
-			g_flScoreboardFade = 1.0f;
-	}
-	else
-	{
-		if( fadeOut <= 0.001f )
-			g_flScoreboardFade = 0.0f;
-		else
-			g_flScoreboardFade -= delta / fadeOut;
-		if( g_flScoreboardFade <= 0.0f )
-		{
-			g_flScoreboardFade = 0.0f;
-			return 1;
-		}
-	}
+	if( !ShouldDrawScoreboard( ))
+		return 1;
 
 	if( !m_bForceDraw )
 	{
@@ -234,9 +190,6 @@ int CHudScoreboard :: Draw( float flTime )
 
 int CHudScoreboard :: DrawScoreboard( float fTime )
 {
-	if( cl_scoreboard_style && cl_scoreboard_style->value >= 1.5f )
-		return DrawScoreboard2( fTime );
-
 	GetAllPlayersInfo();
 	char ServerName[90];
 
@@ -612,6 +565,16 @@ int CHudScoreboard :: MsgFunc_ScoreInfo( const char *pszName, int iSize, void *p
 {
 	m_iFlags |= HUD_DRAW;
 
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
 	short cl = reader.ReadByte();
 	short frags = reader.ReadShort();
@@ -637,7 +600,18 @@ int CHudScoreboard :: MsgFunc_ScoreInfo( const char *pszName, int iSize, void *p
 //		string: client team name
 int CHudScoreboard :: MsgFunc_TeamInfo( const char *pszName, int iSize, void *pbuf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
+
 	short cl = reader.ReadByte();
 	int teamNumber = 0;
 
@@ -737,6 +711,16 @@ int CHudScoreboard :: MsgFunc_TeamInfo( const char *pszName, int iSize, void *pb
 // if this message is never received, then scores will simply be the combined totals of the players.
 int CHudScoreboard :: MsgFunc_TeamScore( const char *pszName, int iSize, void *pbuf )
 {
+	{
+		nexora_netmsg_args_t nxArgs;
+
+		nxArgs.name = pszName;
+		nxArgs.size = iSize;
+		nxArgs.buf = pbuf;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_NETMSG, &nxArgs );
+	}
+
 	BufferReader reader( pszName, pbuf, iSize );
 	char *TeamName = reader.ReadString();
 	int i;
@@ -780,42 +764,44 @@ void CHudScoreboard :: UserCmd_ShowScores( void )
 {
 	m_bForceDraw = false;
 	m_bShowscoresHeld = true;
+
+	nexora_scoreboard_args_t nxArgs;
+
+	nxArgs.visible = 1;
+	NXPluginLoader_Dispatch( NEXORA_HOOK_SCOREBOARD_TOGGLE, &nxArgs );
 }
 
 void CHudScoreboard :: UserCmd_HideScores( void )
 {
 	m_bForceDraw = m_bShowscoresHeld = false;
+
+	nexora_scoreboard_args_t nxArgs;
+
+	nxArgs.visible = 0;
+	NXPluginLoader_Dispatch( NEXORA_HOOK_SCOREBOARD_TOGGLE, &nxArgs );
 }
 
 
 void CHudScoreboard	:: UserCmd_ShowScoreboard2()
 {
-	m_bForceDraw = false;
-
-	if( gEngfuncs.Cmd_Argc() >= 9 )
+	if( gEngfuncs.Cmd_Argc() != 9 )
 	{
-		xstart     = atof(gEngfuncs.Cmd_Argv(1)) * ScreenWidth;
-		xend       = atof(gEngfuncs.Cmd_Argv(2)) * ScreenWidth;
-		ystart     = atof(gEngfuncs.Cmd_Argv(3)) * ScreenHeight;
-		yend       = atof(gEngfuncs.Cmd_Argv(4)) * ScreenHeight;
-		m_colors.r = atoi(gEngfuncs.Cmd_Argv(5));
-		m_colors.g = atoi(gEngfuncs.Cmd_Argv(6));
-		m_colors.b = atoi(gEngfuncs.Cmd_Argv(7));
-		m_colors.a = atoi(gEngfuncs.Cmd_Argv(8));
-		m_bDrawStroke = false;
-		m_bForceDraw = true;
+		ConsolePrint("showscoreboard2 <xstart> <xend> <ystart> <yend> <r> <g> <b> <a>");
 	}
 
-	m_bShowscoresHeld = true;
+	xstart     = atof(gEngfuncs.Cmd_Argv(1)) * ScreenWidth;
+	xend       = atof(gEngfuncs.Cmd_Argv(2)) * ScreenWidth;
+	ystart     = atof(gEngfuncs.Cmd_Argv(3)) * ScreenHeight;
+	yend       = atof(gEngfuncs.Cmd_Argv(4)) * ScreenHeight;
+	m_colors.r = atoi(gEngfuncs.Cmd_Argv(5));
+	m_colors.b = atoi(gEngfuncs.Cmd_Argv(6));
+	m_colors.b = atoi(gEngfuncs.Cmd_Argv(7));
+	m_colors.a = atoi(gEngfuncs.Cmd_Argv(8));
+	m_bDrawStroke = false;
+	m_bForceDraw = true;
 }
 
 void CHudScoreboard :: UserCmd_HideScoreboard2()
 {
 	m_bForceDraw = m_bShowscoresHeld = false; // and disable it
-}
-
-void CHudScoreboard :: UserCmd_ToggleScoreboard()
-{
-	m_bForceDraw = false;
-	m_bShowscoresHeld = !m_bShowscoresHeld;
 }
