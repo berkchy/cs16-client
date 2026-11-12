@@ -299,10 +299,12 @@ void CHudHealth::DrawHealthBar( float flTime )
 
 		NXClientHudElementPos( "health", x, y );
 
-		SPR_Set(gHUD.GetSprite(m_HUD_cross), r, g, b);
-		SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_HUD_cross));
+		const int healthBaseX = x;
 
-		x = CrossWidth + HealthWidth / 2;
+		SPR_Set(gHUD.GetSprite(m_HUD_cross), r, g, b);
+		SPR_DrawAdditive(0, healthBaseX, y, &gHUD.GetSpriteRect(m_HUD_cross));
+
+		x = healthBaseX + CrossWidth / 2 + HealthWidth / 2;
 
 		int idx = gEngfuncs.GetLocalPlayer()->index;
 
