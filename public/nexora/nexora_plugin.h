@@ -26,6 +26,7 @@ enum nexora_hook_e
 	NEXORA_HOOK_NETMSG,
 	NEXORA_HOOK_SCOREBOARD_TOGGLE,
 	NEXORA_HOOK_AMMO_INFO,
+	NEXORA_HOOK_CENTERPRINT,
 	NEXORA_HOOK_COUNT
 };
 
@@ -122,6 +123,12 @@ typedef struct nexora_ammo_args_s
 	int reserve;
 	const char *weapon_name;
 } nexora_ammo_args_t;
+
+typedef struct nexora_centerprint_args_s
+{
+	const char *text;
+	int allow;
+} nexora_centerprint_args_t;
 
 typedef void (*nexora_hook_fn)(void *args, void *user_data);
 

@@ -28,6 +28,7 @@
 #include "vgui_parser.h"
 #include "ctype.h"
 #include "draw_util.h"
+#include "nexora/loader.h"
 
 int CHudTextMessage::Init(void)
 {
@@ -219,11 +220,20 @@ int CHudTextMessage::MsgFunc_TextMsg( const char *pszName, int iSize, void *pbuf
 
 		ConvertCRtoNL( psz );
 
-		int len = DrawUtils::ConsoleStringLen( psz );
+		nexora_centerprint_args_t nxArgs;
 
-		DrawUtils::DrawConsoleString( (ScreenWidth - len) / 2, ScreenHeight / 3, psz );
+		nxArgs.text = psz;
+		nxArgs.allow = 1;
 
-		CenterPrint( psz );
+		NXPluginLoader_Dispatch( NEXORA_HOOK_CENTERPRINT, &nxArgs );
+
+		if ( nxArgs.allow )
+		{
+			int len = DrawUtils::ConsoleStringLen( psz );
+
+			DrawUtils::DrawConsoleString( (ScreenWidth - len) / 2, ScreenHeight / 3, psz );
+			CenterPrint( psz );
+		}
 		break;
 	}
 	case HUD_PRINTNOTIFY:
