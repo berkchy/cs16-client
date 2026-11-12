@@ -124,6 +124,8 @@ int CHudBattery::Draw( float flTime )
 	y = ScreenHeight - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
 	x = ScreenWidth / 5;
 
+	NXClientHudElementPos( "battery", x, y );
+
 	// make sure we have the right sprite handles
 	SPR_Set( m_hFull[m_enArmorType].spr, r, g, b );
 	SPR_DrawAdditive( 0, x, y, &m_hFull[m_enArmorType].rect );

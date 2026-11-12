@@ -29,6 +29,7 @@
 
 #include "demo.h"
 #include "demo_api.h"
+#include "nexora/loader.h"
 #include "vgui_parser.h"
 #include "environment.h"
 
@@ -690,3 +691,19 @@ void CHud::AddHudElem(CHudBase *phudelem)
 
 	ptemp->pNext = pdl;
 }
+
+
+void NXClientHudElementPos( const char *element_name, int &x, int &y )
+{
+	nexora_hud_element_pos_args_t nxArgs;
+
+	nxArgs.name = element_name;
+	nxArgs.x = x;
+	nxArgs.y = y;
+
+	NXPluginLoader_Dispatch( NEXORA_HOOK_HUD_ELEMENT_POS, &nxArgs );
+
+	x = nxArgs.x;
+	y = nxArgs.y;
+}
+

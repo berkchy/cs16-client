@@ -1160,3 +1160,5 @@ extern int g_iTeamNumber;
 extern int g_iUser1;
 extern int g_iUser2;
 extern int g_iUser3;
+
+void NXClientHudElementPos( const char *element_name, int &x, int &y );

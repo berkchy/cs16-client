@@ -27,6 +27,7 @@ enum nexora_hook_e
 	NEXORA_HOOK_SCOREBOARD_TOGGLE,
 	NEXORA_HOOK_AMMO_INFO,
 	NEXORA_HOOK_CENTERPRINT,
+	NEXORA_HOOK_HUD_ELEMENT_POS,
 	NEXORA_HOOK_COUNT
 };
 
@@ -129,6 +130,13 @@ typedef struct nexora_centerprint_args_s
 	const char *text;
 	int allow;
 } nexora_centerprint_args_t;
+
+typedef struct nexora_hud_element_pos_args_s
+{
+	const char *name;
+	int x;
+	int y;
+} nexora_hud_element_pos_args_t;
 
 typedef void (*nexora_hook_fn)(void *args, void *user_data);
 

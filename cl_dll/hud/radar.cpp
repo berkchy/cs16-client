@@ -278,6 +278,9 @@ void CHudRadar::DrawZAxis( Vector pos, int r, int g, int b, int a )
 	}
 }
 
+int s_radarOffsetX = 0;
+int s_radarOffsetY = 0;
+
 int CHudRadar::Draw(float flTime)
 {
 	if ( (gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH) ||
@@ -286,18 +289,23 @@ int CHudRadar::Draw(float flTime)
 		 gHUD.m_fPlayerDead )
 		return 1;
 
+	s_radarOffsetX = 0;
+	s_radarOffsetY = 0;
+
+	NXClientHudElementPos( "radar", s_radarOffsetX, s_radarOffsetY );
+
 	int iTeamNumber = g_PlayerExtraInfo[ gHUD.m_Scoreboard.m_iPlayerNum ].teamnumber;
 	int r, g, b;
 
 	if( cl_radartype->value )
 	{
 		SPR_Set(m_hRadarOpaque.spr, 200, 200, 200);
-		SPR_DrawHoles(0, 0, 0, &m_hRadarOpaque.rect);
+		SPR_DrawHoles(0, s_radarOffsetX, s_radarOffsetY, &m_hRadarOpaque.rect);
 	}
 	else
 	{
 		SPR_Set( m_hRadar.spr, 25, 75, 25 );
-		SPR_DrawAdditive( 0, 0, 0, &m_hRadarOpaque.rect );
+		SPR_DrawAdditive( 0, s_radarOffsetX, s_radarOffsetY, &m_hRadarOpaque.rect );
 	}
 
 	if( bUseRenderAPI )
@@ -380,7 +388,7 @@ int CHudRadar::Draw(float flTime)
 		}
 	}
 
-	DrawPlayerLocation( ( m_hRadarOpaque.rect.Height() ) + 10 );
+	DrawPlayerLocation( ( m_hRadarOpaque.rect.Height() ) + 10 + s_radarOffsetY );
 
 	return 0;
 }
@@ -397,7 +405,7 @@ void CHudRadar::DrawPlayerLocation( int y )
 		if( szLocalizedLocation[0] == '#' )
 			return;
 
-		int x = (m_hRadarOpaque.rect.Width()) / 2;
+		int x = (m_hRadarOpaque.rect.Width()) / 2 + s_radarOffsetX;
 		int len = DrawUtils::ConsoleStringLen( szLocalizedLocation );
 
 		x = x - len / 2;
@@ -415,10 +423,10 @@ inline void CHudRadar::DrawColoredTexture( int x, int y, int size, byte r, byte 
 	// gEngfuncs.pTriAPI->Begin( TRI_QUADS );
 
 	gEngfuncs.pTriAPI->Color4ub( r, g, b, a );
-	DrawUtils::Draw2DQuad( (iMaxRadius + x - size * 2) * gHUD.m_flScale,
-						   (iMaxRadius + y - size * 2) * gHUD.m_flScale,
-						   (iMaxRadius + x + size * 2) * gHUD.m_flScale,
-						   (iMaxRadius + y + size * 2) * gHUD.m_flScale);
+	DrawUtils::Draw2DQuad( (iMaxRadius + s_radarOffsetX + x - size * 2) * gHUD.m_flScale,
+						   (iMaxRadius + s_radarOffsetY + y - size * 2) * gHUD.m_flScale,
+						   (iMaxRadius + s_radarOffsetX + x + size * 2) * gHUD.m_flScale,
+						   (iMaxRadius + s_radarOffsetY + y + size * 2) * gHUD.m_flScale);
 	
 	// gEngfuncs.pTriAPI->End();
 }
@@ -433,7 +441,7 @@ void CHudRadar::DrawRadarDot( int x, int y, int r, int g, int b, int a )
 	}
 	else
 	{
-		FillRGBA(iMaxRadius + x - size*2, iMaxRadius + y - size*2, size*4, size*4, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x - size*2, iMaxRadius + s_radarOffsetY + y - size*2, size*4, size*4, r, g, b, a);
 	}
 }
 
@@ -447,11 +455,11 @@ void CHudRadar::DrawCross( int x, int y, int r, int g, int b, int a )
 	}
 	else
 	{
-		FillRGBA(iMaxRadius + x, iMaxRadius + y, size, size, r, g, b, a);
-		FillRGBA(iMaxRadius + x - size, iMaxRadius + y - size, size, size, r, g, b, a);
-		FillRGBA(iMaxRadius + x - size, iMaxRadius + y + size, size, size, r, g, b, a);
-		FillRGBA(iMaxRadius + x + size, iMaxRadius + y - size, size, size, r, g, b, a);
-		FillRGBA(iMaxRadius + x + size, iMaxRadius + y + size, size, size, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x, iMaxRadius + s_radarOffsetY + y, size, size, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x - size, iMaxRadius + s_radarOffsetY + y - size, size, size, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x - size, iMaxRadius + s_radarOffsetY + y + size, size, size, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x + size, iMaxRadius + s_radarOffsetY + y - size, size, size, r, g, b, a);
+		FillRGBA(iMaxRadius + s_radarOffsetX + x + size, iMaxRadius + s_radarOffsetY + y + size, size, size, r, g, b, a);
 	}
 }
 
@@ -465,8 +473,8 @@ void CHudRadar::DrawT( int x, int y, int r, int g, int b, int a )
 	}
 	else
 	{
-		FillRGBA( iMaxRadius + x - size, iMaxRadius + y - size, size * 3, size, r, g, b, a);
-		FillRGBA( iMaxRadius + x, iMaxRadius + y, size, size * 2, r, g, b, a);
+		FillRGBA( iMaxRadius + s_radarOffsetX + x - size, iMaxRadius + s_radarOffsetY + y - size, size * 3, size, r, g, b, a);
+		FillRGBA( iMaxRadius + s_radarOffsetX + x, iMaxRadius + s_radarOffsetY + y, size, size * 2, r, g, b, a);
 	}
 }
 
@@ -479,8 +487,8 @@ void CHudRadar::DrawFlippedT( int x, int y, int r, int g, int b, int a )
 	}
 	else
 	{
-		FillRGBA( iMaxRadius + x, iMaxRadius + y - size, size, size*2, r, g, b, a);
-		FillRGBA( iMaxRadius + x - size, iMaxRadius + y + size, size*3, size, r, g, b, a);
+		FillRGBA( iMaxRadius + s_radarOffsetX + x, iMaxRadius + s_radarOffsetY + y - size, size, size*2, r, g, b, a);
+		FillRGBA( iMaxRadius + s_radarOffsetX + x - size, iMaxRadius + s_radarOffsetY + y + size, size*3, size, r, g, b, a);
 	}
 }
 

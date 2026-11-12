@@ -99,6 +99,8 @@ int CHudTimer::Draw( float fTime )
 	int x = (ScreenWidth - totalWidth) / 2;
 	int y = ScreenHeight - 1.5 * gHUD.m_iFontHeight;
 
+	NXClientHudElementPos( "timer", x, y );
+
 	SPR_Set(gHUD.GetSprite(m_HUD_timer), r, g, b);
 	SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_HUD_timer));
 	x += iWatchWidth;
