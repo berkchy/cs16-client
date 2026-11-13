@@ -30,6 +30,7 @@
 #include "com_weapons.h"
 #include "utlstring.h"
 #include "strl.h"
+#include "nexora/loader.h"
 //#include "vgui_TeamFortressViewport.h"
 
 extern float *GetClientColor( int clientIndex );
@@ -353,7 +354,32 @@ int CHudSayText :: MsgFunc_SayText( const char *pszName, int iSize, void *pbuf )
 
 void CHudSayText :: SayTextPrint( const char *pszBuf, int iBufSize, int clientIndex )
 {
-	if ( m_HUD_saytext_console->value && pszBuf && *pszBuf )
+	bool consolePrint = m_HUD_saytext_console->value && pszBuf && *pszBuf;
+
+	{
+		nexora_chat_args_t nxArgs;
+
+		nxArgs.text = pszBuf;
+		nxArgs.client_index = clientIndex;
+		nxArgs.time = gHUD.m_flTime;
+		nxArgs.allow = 1;
+
+		NXPluginLoader_Dispatch( NEXORA_HOOK_CHAT, &nxArgs );
+
+		if ( !nxArgs.allow )
+		{
+			if ( consolePrint )
+			{
+				char szConsoleText[ MAX_CHARS_PER_LINE ];
+				StripSayTextControlCodes( pszBuf, szConsoleText, sizeof( szConsoleText ) );
+				ConsolePrint( szConsoleText );
+			}
+
+			return;
+		}
+	}
+
+	if ( consolePrint )
 	{
 		// Print it straight to the console
 		char szConsoleText[ MAX_CHARS_PER_LINE ];

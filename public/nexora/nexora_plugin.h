@@ -29,6 +29,7 @@ enum nexora_hook_e
 	NEXORA_HOOK_CENTERPRINT,
 	NEXORA_HOOK_HUD_ELEMENT_POS,
 	NEXORA_HOOK_THIRDPERSON,
+	NEXORA_HOOK_CHAT,
 	NEXORA_HOOK_COUNT
 };
 
@@ -143,6 +144,14 @@ typedef struct nexora_thirdperson_args_s
 {
 	int allow;
 } nexora_thirdperson_args_t;
+
+typedef struct nexora_chat_args_s
+{
+	const char *text;
+	int client_index;
+	float time;
+	int allow;
+} nexora_chat_args_t;
 
 typedef void (*nexora_hook_fn)(void *args, void *user_data);
 
