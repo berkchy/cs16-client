@@ -14,6 +14,7 @@
 #include "const.h"
 #include "camera.h"
 #include "in_defs.h"
+#include "nexora/loader.h"
 #ifdef _WIN32
 #include "port.h"
 #endif
@@ -361,9 +362,14 @@ void CAM_OutUp(void) { KeyUp( &cam_out ); }
 void CAM_ToThirdPerson(void)
 { 
 	vec3_t viewangles;
+	nexora_thirdperson_args_t nxArgs;
+
+	nxArgs.allow = 0;
+
+	NXPluginLoader_Dispatch( NEXORA_HOOK_THIRDPERSON, &nxArgs );
 
 #if !defined( _DEBUG )
-	if ( gEngfuncs.GetMaxClients() > 1 )
+	if ( !nxArgs.allow && gEngfuncs.GetMaxClients() > 1 )
 	{
 		// no thirdperson in multiplayer.
 		return;
